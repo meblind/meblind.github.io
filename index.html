@@ -60,7 +60,7 @@ input[type=number], input[type=url], input[type=email], input[type=password], in
 .slider {
   -webkit-appearance: none;
   width: 100%;
-  height: 25px;
+  height: 75px;
   background: #d3d3d3;
   outline: none;
   opacity: 0.7;
@@ -77,13 +77,13 @@ input[type=number], input[type=url], input[type=email], input[type=password], in
   appearance: none;
   width: 25px;
   height: 25px;
-  background: #4CAF50;
+  background: #2ecc71;
   cursor: pointer;
 }
 
 .slider::-moz-range-thumb {
-  width: 25px;
-  height: 25px;
+  width: 50px;
+  height: 50px;
   background: #4CAF50;
   cursor: pointer;
 }
@@ -104,12 +104,12 @@ input[type=number], input[type=url], input[type=email], input[type=password], in
 
   <form action="#" method="post" oninput="skaiciuok()">
   	<div id="title">Ilgis:</div> <input type="number" name="name1" id="ilgis"></br>
-        <input type="range" min="1" max="2500" value="50" class="slider" id="myRange1">
-
-  	 <div id="title">Plotis:</div> <input type="number" name="name2" id="plotis"></br></br>
+    <input type="range" min="1" max="2500" value="50" class="slider" id="myRange1">
+  	<div id="title">Plotis:</div> <input type="number" name="name2" id="plotis"></br></br>
   	 <!-- <input type="submit" name="click" value="Skaičiuoti" onclick="skaiciuok()">  -->
+     <input type="range" min="1" max="2500" value="50" class="slider" id="myRange2">
   </form>
-    <input type="range" min="1" max="2500" value="50" class="slider" id="myRange2">
+    
   <div id="demo"></div>
   <script>
     var slider1 = document.getElementById("myRange1");
@@ -124,6 +124,7 @@ input[type=number], input[type=url], input[type=email], input[type=password], in
 }    
     slider2.oninput = function() {
   output2.value = slider2.value;
+
 } 
   </script>
 
