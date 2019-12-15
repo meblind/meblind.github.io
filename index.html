@@ -4,9 +4,9 @@
 <head>
   <meta charset="utf-8">
 
-  <title>The HTML5 Herald</title>
+  <title>pitaGO</title>
   <meta name="description" content="The HTML5 Herald">
-  <meta name="author" content="SitePoint">
+  
 
   <link rel="stylesheet" href="">
 
@@ -48,7 +48,7 @@ input[type=number], input[type=url], input[type=email], input[type=password], in
   		var ilg = document.getElementById('ilgis').value;
   		var plot = document.getElementById('plotis').value;
   		document.getElementById('ats').innerHTML = "";
-  		document.getElementById('ats').innerHTML ="Plotis: " + ilg*plot + ' mm² (' + ilg*plot/1000 + " m²)";
+  		document.getElementById('ats').innerHTML ="Plotis: " + ilg*plot + ' mm² (' + ilg*plot/100000 + " m²)";
   		document.getElementById('pit').innerHTML = "";
   		document.getElementById('pit').innerHTML = "Įžambinė: " + (Math.sqrt((ilg*ilg)+(plot*plot))).toFixed(2)+ " mm ";
   	}
