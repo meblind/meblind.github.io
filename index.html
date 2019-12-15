@@ -26,10 +26,11 @@
     font-family: verdana;
   }
 #pav{
-  font-size: 55px;
-  color: #c0392b;
-  margin: 50px;
-
+font-size: 65px;
+color:
+#c0392b;
+margin: 50px;
+text-shadow:#1e131169 1px 1px 1px;
 }
 body{
   background: #ecf0f1;
@@ -57,7 +58,7 @@ input[type=number], input[type=url], input[type=email], input[type=password], in
   		var ilg = document.getElementById('ilgis').value;
   		var plot = document.getElementById('plotis').value;
   		document.getElementById('ats').innerHTML = "";
-  		document.getElementById('ats').innerHTML ="Plotis: " + ilg*plot + ' mm² (' + ilg*plot/100000 + " m²)";
+  		document.getElementById('ats').innerHTML ="Plotis: " + ilg*plot + ' mm² (' + ilg*plot/1000000 + " m²)";
   		document.getElementById('pit').innerHTML = "";
   		document.getElementById('pit').innerHTML = "Įžambinė: " + (Math.sqrt((ilg*ilg)+(plot*plot))).toFixed(2)+ " mm ";
   	}
