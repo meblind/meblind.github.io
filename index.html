@@ -27,7 +27,7 @@
   }
 
 
-input[type=text], input[type=url], input[type=email], input[type=password], input[type=tel] {
+input[type=number], input[type=url], input[type=email], input[type=password], input[type=tel] {
   -webkit-appearance: none; -moz-appearance: none;
   display: block;
   margin: 0;
@@ -36,7 +36,10 @@ input[type=text], input[type=url], input[type=email], input[type=password], inpu
   border: 1px solid #bbb;
 }
 
-
+#title{
+  font-size:30px;
+  color:navy;
+}
 </style>
 <center>
 <body onload="skaiciuok()">
@@ -52,8 +55,8 @@ input[type=text], input[type=url], input[type=email], input[type=password], inpu
   </script>
 
   <form action="#" method="post" oninput="skaiciuok()">
-  	Ilgis: <input type="text" name="name1" id="ilgis"></br>
-  	 Plotis: <input type="text" name="name2" id="plotis"></br></br>
+  	<div id="title">Ilgis:</div> <input type="number" name="name1" id="ilgis"></br>
+  	 <div id="title">Plotis:</div> <input type="number" name="name2" id="plotis"></br></br>
   	 <!-- <input type="submit" name="click" value="Skaičiuoti" onclick="skaiciuok()">  -->
   </form>
   <div id='pit'></div></br>
