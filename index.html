@@ -29,9 +29,11 @@
 #pav{
 font-size: 65px;
 color:
-#c0392b;
+#27ae60;
 margin: 50px;
-text-shadow:#1e131169 1px 1px 1px;
+text-shadow:
+#2ecc91 1px 1px 1px;
+font-weight: 700;
 }
 body{
   background: #ecf0f1;
@@ -46,6 +48,8 @@ input[type=number], input[type=url], input[type=email], input[type=password], in
   border: 1px solid #bbb;
   padding: 15px;
 }
+input[type=number]:focus
+{border: 2px solid #27ae60;}
 
 #title{
   font-size:30px;
@@ -90,15 +94,15 @@ input[type=number], input[type=url], input[type=email], input[type=password], in
 </style>
 <center>
 <body onload="skaiciuok()">
-  <div id="pav"> λ</div>
+  <a href="https://meblind.github.io/index.html"><div id="pav"> λ</div></a>
   <script type="text/javascript">
   	function skaiciuok(){
   		var ilg = document.getElementById('ilgis').value;
   		var plot = document.getElementById('plotis').value;
   		document.getElementById('ats').innerHTML = "";
-  		document.getElementById('ats').innerHTML ="Plotis: " + ilg*plot + ' mm² (' + ilg*plot/1000000 + " m²)";
+  		document.getElementById('ats').innerHTML ="<b>Plotis:</b> " + ilg*plot + ' mm² (' + ilg*plot/1000000 + " m²)";
   		document.getElementById('pit').innerHTML = "";
-  		document.getElementById('pit').innerHTML = "Įžambinė: " + (Math.sqrt((ilg*ilg)+(plot*plot))).toFixed(2)+ " mm "; 
+  		document.getElementById('pit').innerHTML = "<b>Įžambinė:</b> " + (Math.sqrt((ilg*ilg)+(plot*plot))).toFixed(2)+ " mm "; 
   	}
   </script>
 
