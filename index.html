@@ -13,7 +13,7 @@
 
 </head>
 <style type="text/css">
-	#ats{
+	#ats, #rul, #bri{
 		color:#16a085;
 		font-size: 30px;
 		font-family: verdana;
@@ -38,7 +38,19 @@ font-weight: 700;
 body{
   background: #ecf0f1;
 }
-
+#in_line{
+  display: ruby;
+}
+#kiekis, #rulonas {
+  -webkit-appearance: none; -moz-appearance: none;
+  display: inline;
+  margin: 0;
+  width: 10%; height: 80px;
+  line-height: 40px; font-size: 50px;
+  border: 1px solid #bbb;
+  padding: 15px;
+  border-radius: 20px;
+}
 input[type=number], input[type=url], input[type=email], input[type=password], input[type=tel] {
   -webkit-appearance: none; -moz-appearance: none;
   display: block;
@@ -49,6 +61,9 @@ input[type=number], input[type=url], input[type=email], input[type=password], in
   padding: 15px;
   border-radius: 20px;
 }
+
+
+
 input[type=number]:focus
 {border: 2px solid #27ae60;}
 
@@ -105,10 +120,19 @@ a{
   	function skaiciuok(){
   		var ilg = document.getElementById('ilgis').value;
   		var plot = document.getElementById('plotis').value;
+      var det = document.getElementById('kiekis').value;
+      var rul = document.getElementById('rulonas').value;
+
+      document.getElementById('bri').innerHTML = "";
+      document.getElementById('rul').innerHTML = "";
   		document.getElementById('ats').innerHTML = "";
-  		document.getElementById('ats').innerHTML ="<b>Plotis:</b> " + ilg*plot + ' mm² (' + ilg*plot/1000000 + " m²)";
-  		document.getElementById('pit').innerHTML = "";
+      document.getElementById('pit').innerHTML = "";
+
+  		document.getElementById('ats').innerHTML ="<b>Plotis:</b> " + ilg*plot + ' mm² (' + ilg*plot/1000000 + " m²)"; 		
   		document.getElementById('pit').innerHTML = "<b>Skersinė:</b> " + (Math.sqrt((ilg*ilg)+(plot*plot))).toFixed(2)+ " mm "; 
+      document.getElementById('bri').innerHTML = "Reikės ~" + ((((ilg+30)*2+(plot+30)*2)*det)/100000).toFixed(2) + " m briaunos." ;
+      document.getElementById('rul').innerHTML = "Reikės ~" + ((((((ilg+30)*2+(plot+30)*2)*det)/100000).toFixed(2))/rul).toFixed(2) + " rulonų";
+
   	}
   </script>
 
@@ -118,10 +142,13 @@ a{
   	<div id="title">Plotis:</div> <input type="number" name="name2" id="plotis"></br></br>
   	 <!-- <input type="submit" name="click" value="Skaičiuoti" onclick="skaiciuok()">  -->
      <!-- <input type="range" min="1" max="2500" value="50" class="slider" id="myRange2"> -->
+    <div id='in_line'><div id="title">Dėtalių kiekis:</div> <input type="number" name="kiekis" id="kiekis">
+    <div id="title">Briaunos ilgis rulone:</div> <input type="number" name="rulonas" id="rulonas"></div></br></br>
+
   </form>
     
   <div id="demo"></div>
-  <script>
+<!--   <script>
     var slider1 = document.getElementById("myRange1");
     var slider2 = document.getElementById("myRange2");
     var output1 = document.getElementById("ilgis");
@@ -137,9 +164,11 @@ a{
 
 } 
   </script>
-
+ -->
   <div id='pit'></div></br>
   <div id='ats'></div>
+  <div id='bri'></div></br><!-- reikalingas br kiekis -->
+  <div id='rul'></div><!-- kiek reikes rulonu -->
   </center>
 </body>
 </html>
