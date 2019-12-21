@@ -1,154 +1,201 @@
 <!doctype html>
 
 <html lang="en">
-<head>
-  <meta charset="utf-8">
 
-  <title>pitaGO+</title>
-  <meta name="description" content="The HTML5 Herald">
-  
+  <head>
+    <meta charset="utf-8">
 
-  <link rel="stylesheet" href="">
-  <link rel="javascript" href="rangeslider.min.js">
-
-</head>
-<style type="text/css">
-	#ats, #rul, #bri{
-		color:#16a085;
-		font-size: 30px;
-		font-family: verdana;
-	}
-	#pit{
-		color:#2980b9;
-		font-size: 40px;
-		font-family: verdana;
-	}
-  *{
-    font-family: arial;
-  }
-#pav{
-font-size: 65px;
-color:
-#27ae60;
-margin: 50px;
-text-shadow:
-#2ecc91 1px 1px 1px;
-font-weight: 700;
-}
-body{
-  background: #ecf0f1;
-}
-#in_line{
-  display: ruby;
-}
-#kiekis, #rulonas {
-  -webkit-appearance: none; -moz-appearance: none;
-  display: inline;
-  margin: 0;
-  width: 10%; height: 80px;
-  line-height: 40px; font-size: 50px;
-  border: 1px solid #bbb;
-  padding: 15px;
-  border-radius: 20px;
-}
-input[type=number], input[type=url], input[type=email], input[type=password], input[type=tel] {
-  -webkit-appearance: none; -moz-appearance: none;
-  display: block;
-  margin: 0;
-  width: 40%; height: 80px;
-  line-height: 40px; font-size: 50px;
-  border: 1px solid #bbb;
-  padding: 15px;
-  border-radius: 20px;
-}
+    <title>pitaGO+</title>
+    <meta name="description" content="The HTML5 Herald">
 
 
+    <link rel="stylesheet" href="">
+    <link rel="javascript" href="rangeslider.min.js">
 
-input[type=number]:focus
-{border: 2px solid #27ae60;}
+  </head>
+  <style type="text/css">
+    #ats,
+    #rul,
+    #bri {
+      color: #16a085;
+      font-size: 30px;
+      font-family: verdana;
+    }
 
-#title{
-  font-size:30px;
-  color:#34495e;
-  margin: 15px;
-}
+    #pit {
+      color: #2980b9;
+      font-size: 40px;
+      font-family: verdana;
+    }
+
+    * {
+      font-family: arial;
+    }
+
+    #pav {
+      font-size: 65px;
+      color:
+        #27ae60;
+      margin: 50px;
+      text-shadow:
+        #2ecc91 1px 1px 1px;
+      font-weight: 700;
+    }
+
+    body {
+      background: #ecf0f1;
+    }
+
+    #in_line {
+      display: ruby;
+    }
+
+    #kiekis,
+    #rulonas {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      display: inline;
+      margin: 0;
+      width: 10%;
+      height: 80px;
+      line-height: 40px;
+      font-size: 50px;
+      border: 1px solid #bbb;
+      padding: 15px;
+      border-radius: 20px;
+    }
+
+    input[type=checkbox]{
+      display: ruby;
+    }
+
+    input[type=number],
+    input[type=url],
+    input[type=email],
+    input[type=password],
+    input[type=tel]
+     {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      display: ruby;
+      margin: 0;
+      width: 40%;
+      height: 80px;
+      line-height: 40px;
+      font-size: 50px;
+      border: 2px solid #bbb;
+      padding: 15px;
+      border-radius: 20px;
+    }
 
 
-.slidecontainer {
-  width: 100%;
-}
 
-.slider {
-  -webkit-appearance: none;
-  width: 70%;
-  height: 75px;
-  background: #d3d3d3;
-  outline: none;
-  opacity: 0.7;
-  -webkit-transition: .2s;
-  transition: opacity .2s;
-}
+    input[type=number]:focus {
+      border: 2px solid #27ae60;
+    }
 
-.slider:hover {
-  opacity: 1;
-}
+    #title {
+      font-size: 30px;
+      color: #34495e;
+      margin: 15px;
+   
+    }
 
-a{
-  text-decoration:none;
-}
 
-.slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 25px;
-  height: 25px;
-  background: #2ecc71;
-  cursor: pointer;
-}
+    .slidecontainer {
+      width: 100%;
+    }
 
-.slider::-moz-range-thumb {
-  width: 50px;
-  height: 50px;
-  background: #4CAF50;
-  cursor: pointer;
-}
-</style>
-<center>
-<body onload="skaiciuok()">
-  <!-- <a href="https://meblind.github.io/index.html"><div id="pav"> λ</div></a> -->
-  <script type="text/javascript">
-  	function skaiciuok(){
-  		var ilg = document.getElementById('ilgis').value;
-  		var plot = document.getElementById('plotis').value;
-      var det = document.getElementById('kiekis').value;
-      var rul = document.getElementById('rulonas').value;
+    .slider {
+      -webkit-appearance: none;
+      width: 70%;
+      height: 75px;
+      background: #d3d3d3;
+      outline: none;
+      opacity: 0.7;
+      -webkit-transition: .2s;
+      transition: opacity .2s;
+    }
 
-      document.getElementById('bri').innerHTML = "";
-      document.getElementById('rul').innerHTML = "";
-  		document.getElementById('ats').innerHTML = "";
-      document.getElementById('pit').innerHTML = "";
+    .slider:hover {
+      opacity: 1;
+    }
 
-  		document.getElementById('ats').innerHTML ="<b>Plotis:</b> " + ilg*plot + ' mm² (' + ilg*plot/1000000 + " m²)"; 		
-  		document.getElementById('pit').innerHTML = "<b>Skersinė:</b> " + (Math.sqrt((ilg*ilg)+(plot*plot))).toFixed(2)+ " mm "; 
-      document.getElementById('bri').innerHTML = "Reikės ~" + ((((ilg+30)*2+(plot+30)*2)*det)/100000).toFixed(2) + " m briaunos." ;
-      document.getElementById('rul').innerHTML = "Reikės ~" + ((((((ilg+30)*2+(plot+30)*2)*det)/100000).toFixed(2))/rul).toFixed(2) + " rulonų";
+    a {
+      text-decoration: none;
+    }
 
-  	}
-  </script>
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 25px;
+      height: 25px;
+      background: #2ecc71;
+      cursor: pointer;
+    }
 
-  <form action="#" method="post" oninput="skaiciuok()">
-  	<div id="title">Ilgis:</div> <input type="number" name="name1" id="ilgis"></br>
-    <!-- <input type="range" min="1" max="2500" value="50" class="slider" id="myRange1"> -->
-  	<div id="title">Plotis:</div> <input type="number" name="name2" id="plotis"></br></br>
-  	 <!-- <input type="submit" name="click" value="Skaičiuoti" onclick="skaiciuok()">  -->
-     <!-- <input type="range" min="1" max="2500" value="50" class="slider" id="myRange2"> -->
-    <div id='in_line'><div id="title">Detalių kiekis:</div> <input type="number" name="kiekis" id="kiekis">
-    <div id="title">Briaunos ilgis rulone:</div> <input type="number" name="rulonas" id="rulonas"></div></br></br>
+    .slider::-moz-range-thumb {
+      width: 50px;
+      height: 50px;
+      background: #4CAF50;
+      cursor: pointer;
+    }
 
-  </form>
-    
-  <div id="demo"></div>
-<!--   <script>
+  </style>
+  <center>
+
+    <body onload="skaiciuok()">
+      <!-- <a href="https://meblind.github.io/index.html"><div id="pav"> λ</div></a> -->
+      <script type="text/javascript">
+        function skaiciuok() {
+          var ilg = document.getElementById('ilgis').value;
+          var plot = document.getElementById('plotis').value;
+          var det = document.getElementById('kiekis').value;
+          var rul = document.getElementById('rulonas').value;
+
+          document.getElementById('bri').innerHTML = "";
+          // document.getElementById('rul').innerHTML = "";
+          document.getElementById('ats').innerHTML = "";
+          document.getElementById('pit').innerHTML = "";
+
+          var checkbox1 = document.getElementById('br-1');
+          var checkbox2 = document.getElementById('br-2');
+          // var br_plot=0;
+          // if (checkbox1.checked == true) {
+          //     br_plot = br_plot+1,5;
+              
+          // }  
+          //  if (checkbox2.checked == true) {
+          //     br_plot = br_plot+1,5;
+              
+          // }  
+
+          document.getElementById('ats').innerHTML = "<b>Detales plotis:</b> " + ilg * plot + ' mm² (' + ilg * plot / 1000000 + " m²) | "+ det +" detalių plotis:</b> " + ilg * plot * det + ' mm² (' + (ilg * plot / 1000000)*det + " m²) | ";
+          document.getElementById('pit').innerHTML = "<b>Skersinė:</b> " +  (Math.sqrt((ilg * ilg) + (plot * plot))).toFixed(2) + " mm ";
+          document.getElementById('bri').innerHTML = "Reikės ~" +  ((((ilg + 30) * 2 + (plot + 30) * 2) * det) / 100000).toFixed(2) + " m briaunos. (~" + ((((((ilg + 30) * 2 + (plot + 30) * 2) * det) / 100000).toFixed(2)) / rul).toFixed(2) + " rulonų)";
+
+
+        }
+
+      </script>
+
+      <form action="#" method="post" oninput="skaiciuok()">
+        <div id="title">Ilgis:</div> <input type="number" name="name1" id="ilgis"> 
+      <!--   <input onclick="skaiciuok()" type="checkbox" id="br-1" value="br1"> 1.5
+        <input type="checkbox"  onclick="skaiciuok()"id="br-2" value="br2"><br> -->
+        <!-- <input type="range" min="1" max="2500" value="50" class="slider" id="myRange1"> -->
+        <div id="title">Plotis:</div> <input type="number" name="name2" id="plotis"></br></br>
+        <!-- <input type="submit" name="click" value="Skaičiuoti" onclick="skaiciuok()">  -->
+        <!-- <input type="range" min="1" max="2500" value="50" class="slider" id="myRange2"> -->
+        <div id='in_line'>
+          <div id="title">Detalių kiekis:</div> <input type="number" name="kiekis" id="kiekis">
+          <div id="title">Briaunos ilgis rulone:</div> <input type="number" name="rulonas" id="rulonas">
+        </div></br></br>
+
+      </form>
+
+      <div id="demo"></div>
+      <!--   <script>
     var slider1 = document.getElementById("myRange1");
     var slider2 = document.getElementById("myRange2");
     var output1 = document.getElementById("ilgis");
@@ -165,10 +212,11 @@ a{
 } 
   </script>
  -->
-  <div id='pit'></div></br>
-  <div id='ats'></div>
-  <div id='bri'></div></br><!-- reikalingas br kiekis -->
-  <div id='rul'></div><!-- kiek reikes rulonu -->
+      <div id='pit'></div></br>
+      <div id='bri'></div><!-- reikalingas br kiekis -->
+<!--       <div id='rul'></div>kiek reikes rulonu -->      
+      <div id='ats'></div>
   </center>
-</body>
+  </body>
+
 </html>
