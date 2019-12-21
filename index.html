@@ -140,19 +140,34 @@
       background: #4CAF50;
       cursor: pointer;
     }
+    #myCanvas{
+  position: fixed;
+  left: 5px;
+  top: 5px;
+  background: white;
+}
 
   </style>
   <center>
 
-    <body onload="skaiciuok()">
+    <body onload="skaiciuok()" onresize="skaiciuok()">
       <!-- <a href="https://meblind.github.io/index.html"><div id="pav"> λ</div></a> -->
       <a href="https://meblind.github.io/index.html"><img style="height: 50px;" src="roll.png"></img></a>
+
       <script type="text/javascript">
+        
+
+
         function skaiciuok() {
+
           var ilg = document.getElementById('ilgis').value;
           var plot = document.getElementById('plotis').value;
           var det = document.getElementById('kiekis').value;
           var rul = document.getElementById('rulonas').value;
+
+          // if (document.getElementById('ilgis').value = ""){
+          //   document.getElementById('ats').innerHTML = "";
+          // }
 
           document.getElementById('bri').innerHTML = "";
           // document.getElementById('rul').innerHTML = "";
@@ -171,11 +186,18 @@
               
           // }  
 
+          var mastelis = window.innerWidth*15/1000;
+          
           document.getElementById('ats').innerHTML = "<b>Detalės plotis:</b> " + ilg * plot + ' mm² (' + (ilg * plot / 1000000).toFixed(3) + " m²) | "+ det +" detalių plotis:</b> " + ilg * plot * det + ' mm² (' + ((ilg * plot / 1000000)*det).toFixed(3) + " m²) | ";
           document.getElementById('pit').innerHTML = "<b>Skersinė:</b> " +  (Math.sqrt((ilg * ilg) + (plot * plot))).toFixed(2) + " mm ";
           document.getElementById('bri').innerHTML = "Reikės ~" +  ((((ilg + 30) * 2 + (plot + 30) * 2) * det) / 100000).toFixed(2) + " m briaunos. (~" + ((((((ilg + 30) * 2 + (plot + 30) * 2) * det) / 100000).toFixed(2)) / rul).toFixed(2) + " rulonų)";
 
-
+          document.getElementById('draw').innerHTML ='<canvas id="myCanvas" width="'+ (plot*mastelis/100+10) +'px" height="'+ (ilg*mastelis/100+10) +'px" style="border:1px solid #d3d3d3;">!</canvas>';
+          var c = document.getElementById("myCanvas");
+          var ctx = c.getContext("2d");
+          ctx.beginPath();
+          ctx.rect(5, 5, plot*mastelis/100, ilg*mastelis/100);
+          ctx.stroke();
         }
 
       </script>
@@ -213,6 +235,7 @@
 } 
   </script>
  -->
+      <div id='draw'></div>
       <div id='pit'></div></br>
       
       <div id='bri'></div><!-- reikalingas br kiekis -->
@@ -221,6 +244,12 @@
       <div id='ats'></div>
 
   </center>
+
+
+
+<script>
+  
+</script> 
   </body>
 
 </html>
