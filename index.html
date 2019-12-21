@@ -186,7 +186,7 @@
               
           // }  
 
-          var mastelis = window.innerWidth*15/1000;
+          var mastelis = (window.innerWidth+window.innerHeight)/2*15/1000;
           
           document.getElementById('ats').innerHTML = "<b>Detalės plotis:</b> " + ilg * plot + ' mm² (' + (ilg * plot / 1000000).toFixed(3) + " m²) | "+ det +" detalių plotis:</b> " + ilg * plot * det + ' mm² (' + ((ilg * plot / 1000000)*det).toFixed(3) + " m²) | ";
           document.getElementById('pit').innerHTML = "<b>Skersinė:</b> " +  (Math.sqrt((ilg * ilg) + (plot * plot))).toFixed(2) + " mm ";
