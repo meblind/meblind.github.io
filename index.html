@@ -8,7 +8,7 @@
     <title>pitaGO+</title>
     <meta name="description" content="The HTML5 Herald">
 
-
+    <link rel="shortcut icon" type="image/png" href="roll.png">
     <link rel="stylesheet" href="">
     <link rel="javascript" href="rangeslider.min.js">
 
@@ -146,6 +146,7 @@
 
     <body onload="skaiciuok()">
       <!-- <a href="https://meblind.github.io/index.html"><div id="pav"> λ</div></a> -->
+      <a href="#"><img style="height: 50px;" src="roll.png"></img></a>
       <script type="text/javascript">
         function skaiciuok() {
           var ilg = document.getElementById('ilgis').value;
@@ -170,7 +171,7 @@
               
           // }  
 
-          document.getElementById('ats').innerHTML = "<b>Detales plotis:</b> " + ilg * plot + ' mm² (' + ilg * plot / 1000000 + " m²) | "+ det +" detalių plotis:</b> " + ilg * plot * det + ' mm² (' + (ilg * plot / 1000000)*det + " m²) | ";
+          document.getElementById('ats').innerHTML = "<b>Detalės plotis:</b> " + ilg * plot + ' mm² (' + (ilg * plot / 1000000).toFixed(3) + " m²) | "+ det +" detalių plotis:</b> " + ilg * plot * det + ' mm² (' + ((ilg * plot / 1000000)*det).toFixed(3) + " m²) | ";
           document.getElementById('pit').innerHTML = "<b>Skersinė:</b> " +  (Math.sqrt((ilg * ilg) + (plot * plot))).toFixed(2) + " mm ";
           document.getElementById('bri').innerHTML = "Reikės ~" +  ((((ilg + 30) * 2 + (plot + 30) * 2) * det) / 100000).toFixed(2) + " m briaunos. (~" + ((((((ilg + 30) * 2 + (plot + 30) * 2) * det) / 100000).toFixed(2)) / rul).toFixed(2) + " rulonų)";
 
@@ -213,9 +214,12 @@
   </script>
  -->
       <div id='pit'></div></br>
+      
       <div id='bri'></div><!-- reikalingas br kiekis -->
+      ________________________________________
 <!--       <div id='rul'></div>kiek reikes rulonu -->      
       <div id='ats'></div>
+
   </center>
   </body>
 
