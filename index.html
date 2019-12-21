@@ -186,28 +186,37 @@
               
           // }  
 
-          var mastelis = (window.innerWidth+window.innerHeight)/2*15/1000;
+          var mastelis = (window.innerWidth+window.innerHeight)/3*15/1000;
           
           document.getElementById('ats').innerHTML = "<b>Detalės plotis:</b> " + ilg * plot + ' mm² (' + (ilg * plot / 1000000).toFixed(3) + " m²) | "+ det +" detalių plotis:</b> " + ilg * plot * det + ' mm² (' + ((ilg * plot / 1000000)*det).toFixed(3) + " m²) | ";
           document.getElementById('pit').innerHTML = "<b>Skersinė:</b> " +  (Math.sqrt((ilg * ilg) + (plot * plot))).toFixed(2) + " mm ";
           document.getElementById('bri').innerHTML = "Reikės ~" +  ((((ilg + 30) * 2 + (plot + 30) * 2) * det) / 100000).toFixed(2) + " m briaunos. (~" + ((((((ilg + 30) * 2 + (plot + 30) * 2) * det) / 100000).toFixed(2)) / rul).toFixed(2) + " rulonų)";
 
-          document.getElementById('draw').innerHTML ='<canvas id="myCanvas" width="'+ (plot*mastelis/100+10) +'px" height="'+ (ilg*mastelis/100+10) +'px" style="border:1px solid #d3d3d3;">!</canvas>';
+          document.getElementById('draw').innerHTML ='<canvas id="myCanvas" width="'+ ((plot*mastelis/100+det*1.1)) +'px" height="'+ ((ilg*mastelis/100+det*1.1)) +'px" style="border:1px solid #d3d3d3;">!</canvas>';
           var c = document.getElementById("myCanvas");
           var ctx = c.getContext("2d");
-          ctx.beginPath();
-          ctx.rect(5, 5, plot*mastelis/100, ilg*mastelis/100);
+          
+
+
+          for (var i = 0 ; i < det; i++) {
+            ctx.fillStyle = "#d7b371";
+            ctx.strokeStyle = "#a08458";
+            ctx.lineWidth   = 1;
+            ctx.fillRect(i, i^1.2, plot*mastelis/100, ilg*mastelis/100);
+            ctx.strokeRect(i,i^1.2, plot*mastelis/100, ilg*mastelis/100);
+          }
+          
           ctx.stroke();
         }
 
       </script>
 
       <form action="#" method="post" oninput="skaiciuok()">
-        <div id="title">Ilgis:</div> <input type="number" name="name1" id="ilgis"> 
+        <div id="title">Ilgis:</div> <input type="number" name="name1" id="ilgis" max="2500"> 
       <!--   <input onclick="skaiciuok()" type="checkbox" id="br-1" value="br1"> 1.5
         <input type="checkbox"  onclick="skaiciuok()"id="br-2" value="br2"><br> -->
         <!-- <input type="range" min="1" max="2500" value="50" class="slider" id="myRange1"> -->
-        <div id="title">Plotis:</div> <input type="number" name="name2" id="plotis"></br></br>
+        <div id="title">Plotis:</div> <input type="number" name="name2" id="plotis" max="2500"></br></br>
         <!-- <input type="submit" name="click" value="Skaičiuoti" onclick="skaiciuok()">  -->
         <!-- <input type="range" min="1" max="2500" value="50" class="slider" id="myRange2"> -->
         <div id='in_line'>
