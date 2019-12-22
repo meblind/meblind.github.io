@@ -67,6 +67,8 @@
 
     input[type=checkbox]{
       display: ruby;
+      background: red;
+      padding: 15px;
     }
 
     input[type=number],
@@ -179,6 +181,7 @@
 
           var checkbox1 = document.getElementById('br-1');
           var checkbox2 = document.getElementById('br-2');
+          var checkbox3 = document.getElementById('rodyti');
           // var br_plot=0;
           // if (checkbox1.checked == true) {
           //     br_plot = br_plot+1,5;
@@ -189,28 +192,47 @@
               
           // }  
 
-          var mastelis = (window.innerWidth+window.innerHeight)/3*15/1000;
+          var mastelis = (window.innerWidth+window.innerHeight)/3*20/1000;
           
           document.getElementById('ats').innerHTML = "<b>Detalės plotis:</b> " + ilg * plot + ' mm² (' + (ilg * plot / 1000000).toFixed(3) + " m²) | "+ det +" detalių plotis:</b> " + ilg * plot * det + ' mm² (' + ((ilg * plot / 1000000)*det).toFixed(3) + " m²) | ";
           document.getElementById('pit').innerHTML = "<b>Skersinė:</b> " +  (Math.sqrt((ilg * ilg) + (plot * plot))).toFixed(2) + " mm ";
           document.getElementById('bri').innerHTML = "Reikės ~" +  ((((ilg + 30) * 2 + (plot + 30) * 2) * det) / 100000).toFixed(2) + " m briaunos. (~" + ((((((ilg + 30) * 2 + (plot + 30) * 2) * det) / 100000).toFixed(2)) / rul).toFixed(2) + " rulonų)";
 
-          document.getElementById('draw').innerHTML ='<canvas id="myCanvas" width="'+ ((plot*mastelis/100+det*1.1)) +'px" height="'+ ((ilg*mastelis/100+det*1.1)) +'px" style="border:none;">!</canvas>';
+          document.getElementById('draw').innerHTML ='<canvas id="myCanvas" width="'+ screen.width +'px" height="'+ screen.height +'px" style="border:none;">!</canvas>';
+
+
+
           var c = document.getElementById("myCanvas");
           var ctx = c.getContext("2d");
           
-
-
-          for (var i = 0 ; i < det; i++) {
-            ctx.fillStyle = "#d7b371";
-            ctx.strokeStyle = "#a08458";
-            ctx.lineWidth   = 1;
-            ctx.fillRect(i, i^1.2, plot*mastelis/100, ilg*mastelis/100);
-            ctx.strokeRect(i,i^1.2, plot*mastelis/100, ilg*mastelis/100);
-          }
+          ctx.fillStyle = "#d7b371";
+          ctx.strokeStyle = "#a08458";
+          ctx.lineWidth   = 1;
+          stack=50;
+          x=0;
+          y=0;
           
-          ctx.stroke();
-        }
+          if (checkbox3.checked == true){
+            for (var i = 1 ; i <= det; i++){ 
+              console.log(i);
+              x++;
+              if (det>2000) 
+                break;
+             
+              ctx.strokeStyle = "#a08458";             
+              ctx.fillRect(y+i-y/3, i*0.5, plot*mastelis/100, ilg*mastelis/100);
+              ctx.strokeRect(y+i-y/3, i*0.5, plot*mastelis/100, ilg*mastelis/100);
+ if (x%50==0)
+                  y=-x
+              
+                                 
+              }   
+          }}
+            
+      
+          
+ 
+
 
       </script>
 
@@ -249,7 +271,7 @@
  -->
       <div  id='draw'></div>
       <div  id='pit'></div></br>
-      
+      <input onclick="skaiciuok()" type="checkbox" id="rodyti" value="br1">Rodyti</input>
       <div  id='bri'></div><!-- reikalingas br kiekis -->
       ________________________________________
 <!--       <div id='rul'></div>kiek reikes rulonu -->      
