@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Google Sheets Data</title>
+  <script src="https://apis.google.com/js/api.js"></script>
+</head>
+<body>
+  <div id="data-container"></div>
+
+  <script>
+    const SPREADSHEET_ID = '1hAbZXWSvNY6AKL6xGZSjL9wjmmxOLHz7vT83utWmC8g';
+    const RANGE = 'Main NEW'; // Sheet name
+    const API_KEY = 'AIzaSyAvwaPTyLSgiwMhxHSpsS7iUfiLERkawaM'; // Replace with your actual API key.
+
+    function initClient() {
+      gapi.client.init({
+        apiKey: API_KEY,
+        discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
+      }).then(() => {
+        fetchSheetData();
+      });
+    }
+
+    function fetchSheetData() {
+      gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID,
+        range: RANGE,
+      }).then((response) => {
+        const values = response.result.values;
+        displayData(values);
+      }).catch(error => {
+        console.error('Error fetching data:', error);
+        document.getElementById('data-container').innerHTML = "<p>Error loading sheet data. Check console.</p>";
+      });
+    }
+
+    function displayData(data) {
+      const container = document.getElementById('data-container');
+      if (data && data.length > 0) {
+        let tableHTML = '<table>';
+        data.forEach((row, rowIndex) => {
+          tableHTML += '<tr>';
+          row.forEach((cell, cellIndex) => {
+            tableHTML += `<td>${cell}</td>`;
+          });
+          tableHTML += '</tr>';
+        });
+        tableHTML += '</table>';
+        container.innerHTML = tableHTML;
+      } else {
+        container.innerHTML = '<p>No data found in the sheet.</p>';
+      }
+    }
+
+    gapi.load('client', initClient);
+  </script>
+  <style>
+    table, th, td {
+      border: 1px solid black;
+      border-collapse: collapse;
+      padding: 8px;
+    }
+  </style>
+
+</body>
+</html>
