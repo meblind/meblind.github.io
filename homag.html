@@ -1,66 +1,300 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Google Sheets Data</title>
-  <script src="https://apis.google.com/js/api.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brandt Data Search from Google Sheets</title>
+    <script src="https://apis.google.com/js/api.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        #search-controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+        #search-controls label {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        #search-controls input[type="text"],
+        #search-controls input[type="number"] {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            margin-right: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+            font-size: 0.9em;
+            word-break: break-word;
+        }
+        th {
+            background-color: #e9e9e9;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        tbody tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tbody tr:hover {
+            background-color: #f1f1f1;
+        }
+        #loading {
+            text-align: center;
+            margin-top: 20px;
+            font-style: italic;
+            color: #666;
+        }
+        #error {
+            text-align: center;
+            color: red;
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
-  <div id="data-container"></div>
+    <h1>Brandt Data Search</h1>
 
-  <script>
-    const SPREADSHEET_ID = '1hAbZXWSvNY6AKL6xGZSjL9wjmmxOLHz7vT83utWmC8g';
-    const RANGE = 'Main NEW'; // Sheet name
-    const API_KEY = 'AIzaSyAvwaPTyLSgiwMhxHSpsS7iUfiLERkawaM'; // Replace with your actual API key.
+    <div id="search-controls">
+        <div>
+            <label for="generalSearch">General Search:</label>
+            <input type="text" id="generalSearch" placeholder="Search text...">
+        </div>
+        <div>
+            <label for="dimensionSearch">Dimension (±3mm):</label>
+            <input type="number" id="dimensionSearch" placeholder="Search Length or Width">
+        </div>
+    </div>
 
-    function initClient() {
-      gapi.client.init({
-        apiKey: API_KEY,
-        discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
-      }).then(() => {
-        fetchSheetData();
-      });
-    }
+    <div id="loading">Loading data...</div>
+    <div id="error" style="display: none;"></div>
 
-    function fetchSheetData() {
-      gapi.client.sheets.spreadsheets.values.get({
-        spreadsheetId: SPREADSHEET_ID,
-        range: RANGE,
-      }).then((response) => {
-        const values = response.result.values;
-        displayData(values);
-      }).catch(error => {
-        console.error('Error fetching data:', error);
-        document.getElementById('data-container').innerHTML = "<p>Error loading sheet data. Check console.</p>";
-      });
-    }
+    <table id="dataTable" style="display: none;">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Group</th>
+                <th>Part</th>
+                <th>Length (I)</th>
+                <th>Width (P)</th>
+                <th>L Alt</th>
+                <th>W Alt</th>
+                <th>Edges</th>
+                <th>Col I</th>
+                <th>Qty</th>
+                <th>Grain/Dir</th>
+                <th>Mat/Face</th>
+                <th>Flags</th>
+                <th>Flag +</th>
+                <th>Flag -</th>
+                <th>Other...</th>
+            </tr>
+        </thead>
+        <tbody id="dataTableBody">
+            <!-- Data will be populated here by JavaScript -->
+        </tbody>
+    </table>
 
-    function displayData(data) {
-      const container = document.getElementById('data-container');
-      if (data && data.length > 0) {
-        let tableHTML = '<table>';
-        data.forEach((row, rowIndex) => {
-          tableHTML += '<tr>';
-          row.forEach((cell, cellIndex) => {
-            tableHTML += `<td>${cell}</td>`;
-          });
-          tableHTML += '</tr>';
-        });
-        tableHTML += '</table>';
-        container.innerHTML = tableHTML;
-      } else {
-        container.innerHTML = '<p>No data found in the sheet.</p>';
-      }
-    }
+    <script>
+        // Google Sheets API Configuration
+        const SPREADSHEET_ID = '1hAbZXWSvNY6AKL6xGZSjL9wjmmxOLHz7vT83utWmC8g';
+        const RANGE = 'Main NEW'; // Sheet name
+        const API_KEY = 'AIzaSyAvwaPTyLSgiwMhxHSpsS7iUfiLERkawaM';
 
-    gapi.load('client', initClient);
-  </script>
-  <style>
-    table, th, td {
-      border: 1px solid black;
-      border-collapse: collapse;
-      padding: 8px;
-    }
-  </style>
+        // DOM Elements
+        const generalSearchInput = document.getElementById('generalSearch');
+        const dimensionSearchInput = document.getElementById('dimensionSearch');
+        const tableBody = document.getElementById('dataTableBody');
+        const dataTable = document.getElementById('dataTable');
+        const loadingIndicator = document.getElementById('loading');
+        const errorDiv = document.getElementById('error');
 
+        let parsedData = [];
+        let currentGroup = ''; // To keep track of the group name
+
+        function initClient() {
+            gapi.client.init({
+                apiKey: API_KEY,
+                discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
+            }).then(() => {
+                fetchSheetData();
+            }).catch(error => {
+                showError('Error initializing Google Sheets client: ' + error);
+            });
+        }
+
+        function fetchSheetData() {
+            gapi.client.sheets.spreadsheets.values.get({
+                spreadsheetId: SPREADSHEET_ID,
+                range: RANGE,
+            }).then((response) => {
+                const values = response.result.values;
+                parsedData = parseSheetData(values);
+                populateTable(parsedData);
+                
+                // Hide loading, show table
+                loadingIndicator.style.display = 'none';
+                dataTable.style.display = 'table';
+            }).catch(error => {
+                showError('Error fetching data: ' + error);
+            });
+        }
+
+        function showError(message) {
+            loadingIndicator.style.display = 'none';
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function parseSheetData(values) {
+            const data = [];
+            let currentGroup = '';
+
+            // Skip header row
+            for (let i = 1; i < values.length; i++) {
+                const row = values[i];
+                
+                // Check if this row has a group name
+                if (row[1]) {
+                    currentGroup = row[1];
+                }
+
+                // Ensure the row has enough columns
+                while (row.length < 16) {
+                    row.push('');
+                }
+
+                const rowObject = {
+                    id: row[0] || '',
+                    group: currentGroup || '',
+                    part: row[2] || '',
+                    length: row[3] || '',
+                    width: row[4] || '',
+                    lengthAlt: row[5] || '',
+                    widthAlt: row[6] || '',
+                    edges: row[7] || '',
+                    colI: row[8] || '',
+                    qty: row[9] || '',
+                    grainDir: row[10] || '',
+                    matFace: row[11] || '',
+                    flags: row[12] || '',
+                    flagPlus: row[13] || '',
+                    flagMinus: row[14] || '',
+                    other: row.slice(15).join(', ') || ''
+                };
+                data.push(rowObject);
+            }
+            return data;
+        }
+
+        function populateTable(data) {
+            tableBody.innerHTML = '';
+            if (data.length === 0) {
+                const tr = document.createElement('tr');
+                const td = document.createElement('td');
+                td.colSpan = 16;
+                td.textContent = 'No matching records found.';
+                td.style.textAlign = 'center';
+                tr.appendChild(td);
+                tableBody.appendChild(tr);
+                return;
+            }
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${row.id}</td>
+                    <td>${row.group}</td>
+                    <td>${row.part}</td>
+                    <td>${row.length}</td>
+                    <td>${row.width}</td>
+                    <td>${row.lengthAlt}</td>
+                    <td>${row.widthAlt}</td>
+                    <td>${row.edges}</td>
+                    <td>${row.colI}</td>
+                    <td>${row.qty}</td>
+                    <td>${row.grainDir}</td>
+                    <td>${row.matFace}</td>
+                    <td>${row.flags}</td>
+                    <td>${row.flagPlus}</td>
+                    <td>${row.flagMinus}</td>
+                    <td>${row.other}</td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        function filterData() {
+            const generalTerm = generalSearchInput.value.toLowerCase();
+            const dimensionValue = parseFloat(dimensionSearchInput.value);
+            const range = 3;
+
+            const filtered = parsedData.filter(row => {
+                // General Text Search
+                let matchesGeneral = true;
+                if (generalTerm) {
+                    matchesGeneral = (
+                        row.id.toLowerCase().includes(generalTerm) ||
+                        row.group.toLowerCase().includes(generalTerm) ||
+                        row.part.toLowerCase().includes(generalTerm) ||
+                        row.edges.toLowerCase().includes(generalTerm) ||
+                        row.flags.toLowerCase().includes(generalTerm) ||
+                        row.other.toLowerCase().includes(generalTerm)
+                    );
+                }
+
+                // Dimension Range Search
+                let matchesDimension = true;
+                if (!isNaN(dimensionValue)) {
+                    const rowLength = parseFloat(row.length);
+                    const rowWidth = parseFloat(row.width);
+
+                    const lengthInRange = !isNaN(rowLength) &&
+                                          (rowLength >= dimensionValue - range && rowLength <= dimensionValue + range);
+
+                    const widthInRange = !isNaN(rowWidth) &&
+                                         (rowWidth >= dimensionValue - range && rowWidth <= dimensionValue + range);
+
+                    matchesDimension = lengthInRange || widthInRange;
+                } else if (dimensionSearchInput.value.trim() !== '') {
+                    matchesDimension = false;
+                }
+
+                return matchesGeneral && matchesDimension;
+            });
+
+            populateTable(filtered);
+        }
+
+        // Initialize Google Sheets API
+        gapi.load('client', initClient);
+
+        // Event Listeners
+        generalSearchInput.addEventListener('input', filterData);
+        dimensionSearchInput.addEventListener('input', filterData);
+    </script>
 </body>
 </html>
