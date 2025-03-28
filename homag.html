@@ -125,7 +125,7 @@
         let parsedData = [];
 
         function initClient() {
-            gapi.client.init({ apiKey: API_KEY, discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'] })
+            gapi.client.init({ apiKey: AIzaSyAvwaPTyLSgiwMhxHSpsS7iUfiLERkawaM, discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'] })
                 .then(fetchSheetData)
                 .catch(error => showError('Error initializing: ' + error));
         }
