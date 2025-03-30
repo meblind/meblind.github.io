@@ -8,8 +8,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://apis.google.com/js/api.js" defer></script>
-    <script src="https://apis.google.com/js/platform.js" async defer></script>
-
     <style>
         :root {
             --color-bg: #EBE8DB;
@@ -527,6 +525,11 @@
         function init() {
             // Load Google Sheets API
             gapi.load('client', initClient);
+        }
+
+        // Initialize the application
+        window.onload = function() {
+            init();
 
             // Debounce search inputs to improve performance
             const debouncedFilter = debounce(filterData, 200);
@@ -541,10 +544,7 @@
                 elements.dimensionIndicator.style.display = isDimensionSearch ? 'inline-block' : 'none';
                 elements.dimensionRangeContainer.style.display = isDimensionSearch ? 'flex' : 'none';
             });
-        }
-
-        // Initialize the application
-        init();
+        };
     </script>
 </body>
 </html>
