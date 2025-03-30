@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Brandt Data Search</title>
-    <script src="https://apis.google.com/js/api.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://apis.google.com/js/api.js" defer></script>
     <style>
         :root {
             --color-bg: #EBE8DB;
@@ -12,76 +15,261 @@
             --color-secondary: #B03052;
             --color-accent: #3D0301;
             --color-text: #333;
-            --color-table-header: #e9e9e9;
-            --color-table-row-even: #f9f9f9;
-            --color-table-row-hover: #f1f1f1;
+            --color-table-header: #f0f0f0;
+            --color-table-row-even: #f8f8f8;
+            --color-table-row-hover: #e8e8e8;
             --color-input-border: #ccc;
             --color-loading-text: #666;
+            --color-error: #ff4136;
+            --shadow-h হালকা: 0 2px 4px rgba(0, 0, 0, 0.08);
+            --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --transition-fast: all 0.2s ease-in-out;
+            --transition-medium: all 0.3s ease-in-out;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body {
-            font-family: sans-serif;
-            margin: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
             background-color: var(--color-bg);
+            color: var(--color-text);
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
         }
+
         h1 {
             text-align: center;
             color: var(--color-accent);
+            margin-bottom: 20px;
+            font-size: 2.25rem;
+            font-weight: 600;
         }
+
         #search-controls {
             display: flex;
             flex-wrap: wrap;
             gap: 15px;
             background: #fff;
-            padding: 15px;
-            border-radius: 5px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            align-items: center;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: var(--shadow-medium);
+            margin-bottom: 20px;
         }
+
         #search-controls label {
-            font-weight: bold;
+            font-weight: 600;
             color: var(--color-secondary);
+            width: 100%;
+            margin-bottom: 5px;
+            display: block;
         }
+
         #search-controls input {
-            padding: 8px;
+            flex: 1 1 150px;
+            padding: 10px;
             border: 1px solid var(--color-input-border);
-            border-radius: 3px;
+            border-radius: 4px;
+            font-size: 1rem;
+            transition: var(--transition-fast);
         }
+
+        #search-controls input:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 2px rgba(215, 108, 130, 0.2);
+        }
+
+        #dimension-indicator {
+            background-color: var(--color-primary);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            margin-left: 10px;
+            display: none;
+            white-space: nowrap;
+        }
+
+        #search-controls #dimensionRangeContainer {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            width: 100%;
+            display: none;
+        }
+
+        #search-controls #dimensionRangeSlider {
+            flex-grow: 1;
+            -webkit-appearance: none;
+            height: 6px;
+            background: #ddd;
+            border-radius: 5px;
+            outline: none;
+            transition: var(--transition-fast);
+        }
+
+        #search-controls #dimensionRangeSlider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--color-primary);
+            cursor: pointer;
+            box-shadow: var(--shadow-h হালকা);
+        }
+
+        #search-controls #dimensionRangeSlider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--color-primary);
+            cursor: pointer;
+            box-shadow: var(--shadow-h হালকা);
+            border: none;
+        }
+
+        #search-controls #dimensionRangeSlider::-webkit-slider-thumb:hover,
+        #search-controls #dimensionRangeSlider::-moz-range-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        #search-controls #dimensionRangeSlider:focus {
+            box-shadow: 0 0 0 3px rgba(215, 108, 130, 0.3);
+        }
+
+        #search-controls #dimensionRangeValue {
+            min-width: 80px;
+            text-align: center;
+            font-weight: 600;
+            color: var(--color-secondary);
+            font-size: 1.1rem;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
             background: #fff;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: var(--shadow-medium);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
         }
+
         th, td {
             border: 1px solid #ddd;
-            padding: 10px;
+            padding: 14px;
             text-align: left;
+            transition: var(--transition-fast);
         }
+
         th {
             background: var(--color-table-header);
             position: sticky;
             top: 0;
             z-index: 1;
             color: var(--color-accent);
+            font-weight: 700;
         }
+
         tbody tr:nth-child(even) {
             background: var(--color-table-row-even);
         }
+
         tbody tr:hover {
             background: var(--color-table-row-hover);
         }
-        #loading {
+
+        td {
+            font-size: 1rem;
+        }
+
+        .number-title {
+            font-weight: bold;
+            color: var(--color-primary);
+        }
+
+        #loading, #error {
             text-align: center;
             margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        #loading {
             font-style: italic;
             color: var(--color-loading-text);
+            background-color: rgba(0,0,0,0.05);
         }
+
         #error {
-            text-align: center;
-            color: var(--color-secondary);
+            color: white;
+            background-color: var(--color-error);
+            font-weight: 600;
+        }
+
+        #error.show {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            #search-controls {
+                flex-direction: column;
+            }
+
+            #search-controls input {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+
+            #search-controls #dimensionRangeContainer {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            #search-controls #dimensionRangeValue {
+                margin-top: 10px;
+            }
+        }
+
+        .visually-hidden {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            margin: -1px;
+            padding: 0;
+            overflow: hidden;
+            clip: rect(0,0,0,0);
+            border: 0;
+        }
+
+        #data-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        footer {
             margin-top: 20px;
+            text-align: center;
+            color: var(--color-text);
+            font-size: 0.9rem;
         }
     </style>
 </head>
@@ -89,95 +277,272 @@
     <h1>Brandt Data Search</h1>
     <div id="search-controls">
         <label for="generalSearch">General Search:</label>
-        <input type="text" id="generalSearch" placeholder="Search text...">
-        <label for="dimensionSearch">Dimension (±3mm):</label>
-        <input type="number" id="dimensionSearch" placeholder="Search Length or Width">
+        <input type="search" id="generalSearch" placeholder="Search text or dimensions..." autocomplete="off">
+        <span id="dimension-indicator">Dimension Search</span>
+        <div id="dimensionRangeContainer">
+            <label for="dimensionRangeSlider" class="visually-hidden">Dimension Range</label>
+            <input type="range" id="dimensionRangeSlider" min="0" max="10" step="0.5" value="3">
+            <span id="dimensionRangeValue">±3.0mm</span>
+        </div>
     </div>
-    <div id="loading">Loading data...</div>
-    <div id="error" style="display: none;"></div>
-    <table id="dataTable" style="display: none;">
-        <thead>
-            <tr>
-                <th>Gaminys</th>
-                <th>Dėtalė</th>
-                <th>L</th>
-                <th>W</th>
-                <th>L+</th>
-                <th>W+</th>
-                <th>Br</th>
-                <th>R/Ž</th>
-                <th>Dest</th>
-            </tr>
-        </thead>
-        <tbody id="dataTableBody"></tbody>
-    </table>
+    <div id="data-container">
+        <div id="loading">Loading data...</div>
+        <div id="error" style="display: none;"></div>
+        <table id="dataTable" style="display: none;">
+            <thead>
+                <tr>
+                    <th>Gaminys</th>
+                    <th>Dėtalė</th>
+                    <th>L</th>
+                    <th>W</th>
+                </tr>
+            </thead>
+            <tbody id="dataTableBody"></tbody>
+        </table>
+    </div>
+    <footer>
+        <p>© <?php echo date("Y"); ?> Brandt Data Search. All rights reserved.</p>
+    </footer>
+
     <script>
-        const SPREADSHEET_ID = '1hAbZXWSvNY6AKL6xGZSjL9wjmmxOLHz7vT83utWmC8g';
-        const RANGE = 'Main NEW';
-        const API_KEY = 'AIzaSyAvwaPTyLSgiwMhxHSpsS7iUfiLERkawaM';
+       // Configuration object to centralize sensitive information
+        const CONFIG = {
+            SPREADSHEET_ID: '1hAbZXWSvNY6AKL6xGZSjL9wjmmxOLHz7vT83utWmC8g',
+            RANGE: 'Main NEW',
+            API_KEY: 'YOUR_API_KEY' // Replace with your actual API key
+        };
 
-        const generalSearchInput = document.getElementById('generalSearch');
-        const dimensionSearchInput = document.getElementById('dimensionSearch');
-        const tableBody = document.getElementById('dataTableBody');
-        const dataTable = document.getElementById('dataTable');
-        const loadingIndicator = document.getElementById('loading');
-        const errorDiv = document.getElementById('error');
+        // DOM element references
+        const elements = {
+            generalSearch: document.getElementById('generalSearch'),
+            dimensionSearchInput: document.getElementById('dimensionSearchSlider'), // Changed to use the slider
+            tableBody: document.getElementById('dataTableBody'),
+            dataTable: document.getElementById('dataTable'),
+            loading: document.getElementById('loading'),
+            error: document.getElementById('error'),
+            dimensionIndicator: document.getElementById('dimension-indicator'),
+            dimensionRangeContainer: document.getElementById('dimensionRangeContainer'),
+            dimensionRangeValue: document.getElementById('dimensionRangeValue')
+        };
+
+        // State management
         let parsedData = [];
+        let isFetchingData = false;
 
-        function initClient() {
-            gapi.client.init({ apiKey: AIzaSyAvwaPTyLSgiwMhxHSpsS7iUfiLERkawaM, discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'] })
-                .then(fetchSheetData)
-                .catch(error => showError('Error initializing: ' + error));
-        }
-
-        function fetchSheetData() {
-            gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: RANGE })
-                .then(response => {
-                    parsedData = response.result.values.slice(1).map(row => ({
-                        id: row[0] || '', group: row[1] || '', part: row[2] || '',
-                        length: parseFloat(row[3]) || NaN, width: parseFloat(row[4]) || NaN
-                    }));
-                    populateTable(parsedData);
-                    loadingIndicator.style.display = 'none';
-                    dataTable.style.display = 'table';
-                })
-                .catch(error => showError('Error fetching data: ' + error));
-        }
-
+        // Helper Functions
+        /**
+         * Displays an error message.
+         * @param {string} message - The error message to display.
+         */
         function showError(message) {
-            loadingIndicator.style.display = 'none';
-            errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
+            elements.loading.style.display = 'none';
+            elements.error.textContent = message;
+            elements.error.classList.add('show');
+            console.error(message);
         }
 
-        function populateTable(data) {
-            tableBody.innerHTML = '';
-            if (data.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="9" style="text-align:center;">No matching records found.</td></tr>';
+        /**
+         * Hides the error message.
+         */
+        function hideError() {
+            elements.error.classList.remove('show');
+        }
+
+        /**
+         * Sanitizes HTML to prevent Cross-Site Scripting (XSS) attacks.
+         * @param {string} str - The string to sanitize.
+         * @returns {string} The sanitized string.
+         */
+        function escapeHTML(str) {
+            if (str == null) return '';
+            return str.toString().replace(/[&<>'"]/g,
+                tag => ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    "'": '&#39;',
+                    '"': '&quot;'
+                }[tag] || tag));
+        }
+
+        // Initialize Google Sheets API client
+        function initClient() {
+            if (isFetchingData) return;
+            isFetchingData = true;
+            elements.loading.style.display = 'block';
+            hideError();
+            try {
+                gapi.client.init({
+                    apiKey: CONFIG.API_KEY,
+                    discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
+                })
+                    .then(fetchSheetData)
+                    .catch(error => {
+                        isFetchingData = false;
+                        showError('Error initializing API: ' + error.message);
+                    });
+            } catch (error) {
+                isFetchingData = false;
+                showError('Initialization error: ' + error.message);
+            }
+        }
+
+        // Fetch data from Google Sheets
+        function fetchSheetData() {
+            if (!gapi.client || !gapi.client.sheets) {
+                showError('Google Sheets API client is not initialized.');
+                isFetchingData = false;
                 return;
             }
-            data.forEach(row => {
-                tableBody.innerHTML += `<tr><td>${row.id}</td><td>${row.group}</td><td>${row.part}</td>
-                    <td>${row.length || ''}</td><td>${row.width || ''}</td></tr>`;
-            });
+
+            gapi.client.sheets.spreadsheets.values.get({
+                spreadsheetId: CONFIG.SPREADSHEET_ID,
+                range: CONFIG.RANGE
+            })
+                .then(response => {
+                    isFetchingData = false;
+                    elements.loading.style.display = 'none';
+                    elements.dataTable.style.display = 'table';
+                    try {
+                        const rawData = response.result.values;
+                        if (!rawData || rawData.length === 0) {
+                            parsedData = [];
+                            populateTable(parsedData);
+                            return;
+                        }
+
+                        parsedData = rawData.slice(1).map(row => {
+                            const length = parseFloat(row[3]);
+                            const width = parseFloat(row[4]);
+
+                            return {
+                                id: escapeHTML(row[0] || ''),
+                                group: escapeHTML(row[1] || ''),
+                                part: escapeHTML(row[2] || ''),
+                                length: isNaN(length) ? null : length,
+                                width: isNaN(width) ? null : width,
+                            };
+                        }).filter(row => row.id || row.group || row.part);
+
+                        populateTable(parsedData);
+
+                    } catch (error) {
+                        showError('Error processing data: ' + error.message);
+                    }
+                })
+                .catch(error => {
+                    isFetchingData = false;
+                    showError('Error fetching data: ' + error.message)
+                });
         }
 
-        function filterData() {
-            const term = generalSearchInput.value.toLowerCase();
-            const dimension = parseFloat(dimensionSearchInput.value);
-            const range = 3;
-            const filtered = parsedData.filter(row => {
-                let matchesGeneral = !term || Object.values(row).some(val => val.toString().toLowerCase().includes(term));
-                let matchesDimension = isNaN(dimension) || ((row.length >= dimension - range && row.length <= dimension + range) ||
-                    (row.width >= dimension - range && row.width <= dimension + range));
-                return matchesGeneral && matchesDimension;
+        // Populate table with filtered data
+        function populateTable(data) {
+            const tableBody = elements.tableBody;
+            tableBody.innerHTML = '';
+
+            if (!data || data.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="4" style="text-align:center; font-style:italic;">
+                            No matching records found.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            const fragment = document.createDocumentFragment();
+
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                let idClass = '';
+                if (row.length !== null || row.width !== null) {
+                    idClass = 'number-title';
+                }
+                tr.innerHTML = `
+                    <td class="${idClass}">${row.id}</td>
+                    <td>${row.group}</td>
+                    <td>${row.part}</td>
+                    <td>${row.length !== null ? row.length.toFixed(2) : ''}</td>
+                    <td>${row.width !== null ? row.width.toFixed(2) : ''}</td>
+                `;
+                fragment.appendChild(tr);
             });
+
+            tableBody.appendChild(fragment);
+        }
+
+        // Filter data based on search inputs
+        function filterData() {
+            if (!parsedData) return;
+
+            const term = elements.generalSearch.value.toLowerCase().trim();
+            const dimensionValue = parseFloat(term);
+            const isDimensionSearch = !isNaN(dimensionValue);
+
+            elements.dimensionIndicator.style.display = isDimensionSearch ? 'inline-block' : 'none';
+            elements.dimensionRangeContainer.style.display = isDimensionSearch ? 'flex' : 'none';
+
+            const dimensionRange = parseFloat(elements.dimensionRangeSlider.value);
+
+
+            const filtered = parsedData.filter(row => {
+                const matchesGeneral = !isDimensionSearch && (
+                    row.id.toLowerCase().includes(term) ||
+                    row.group.toLowerCase().includes(term) ||
+                    row.part.toLowerCase().includes(term)
+                );
+
+                const matchesDimension = isDimensionSearch &&
+                    ((row.length !== null && row.length >= dimensionValue - dimensionRange && row.length <= dimensionValue + dimensionRange) ||
+                    (row.width !== null && row.width >= dimensionValue - dimensionRange && row.width <= dimensionValue + dimensionRange));
+
+                const matchesNumberInTitle = !isDimensionSearch && (row.length !== null || row.width !== null) && (
+                    row.id.toLowerCase().includes(term)
+                );
+
+                return matchesGeneral || matchesDimension || matchesNumberInTitle;
+            });
+
             populateTable(filtered);
         }
 
-        gapi.load('client', initClient);
-        generalSearchInput.addEventListener('input', filterData);
-        dimensionSearchInput.addEventListener('input', filterData);
+        // Debounce function to limit rapid function calls
+        function debounce(func, delay) {
+            let timeoutId;
+            return function (...args) {
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                }
+                timeoutId = setTimeout(() => {
+                    func.apply(this, args);
+                }, delay);
+            };
+        }
+
+        // API initialization and event listeners
+        function init() {
+            // Load Google Sheets API
+            gapi.load('client', initClient);
+
+            // Debounce search inputs to improve performance
+            const debouncedFilter = debounce(filterData, 200);
+
+            elements.generalSearch.addEventListener('input', debouncedFilter);
+            elements.dimensionRangeSlider.addEventListener('input', debouncedFilter);
+             elements.generalSearch.addEventListener('input', () => {
+                const term = elements.generalSearch.value.toLowerCase().trim();
+                const dimensionValue = parseFloat(term);
+                const isDimensionSearch = !isNaN(dimensionValue);
+
+                elements.dimensionIndicator.style.display = isDimensionSearch ? 'inline-block' : 'none';
+                elements.dimensionRangeContainer.style.display = isDimensionSearch ? 'flex' : 'none';
+            });
+        }
+
+        // Initialize the application
+        init();
     </script>
 </body>
 </html>
