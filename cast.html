@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cast URL to Chromecast</title>    
+    <script type="text/javascript" src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            padding: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+            max-width: 600px;
+            margin: 40px auto;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            background-color: #fff;
+            border-radius: 8px;
+        }
+        h1 {
+            text-align: center;
+            color: #4285F4; /* Google Blue */
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="url"] {
+            width: calc(100% - 22px); /* Account for padding */
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1em;
+        }
+        button#castButton {
+            background-color: #34A853; /* Google Green */
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-right: 10px;
+            transition: background-color 0.2s ease;
+        }
+        button#castButton:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        button#castButton:hover:not(:disabled) {
+            background-color: #2c8a44;
+        }
+        /* Style the Google Cast Button */
+        google-cast-launcher {
+            width: 35px;
+            height: 28px;
+            display: inline-block;
+            vertical-align: middle;
+            cursor: pointer;
+            --disconnected-color: #777;
+            --connected-color: #4285F4; /* Google Blue */
+        }
+        #status {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #eee;
+            border-left: 3px solid #4285F4; /* Google Blue */
+            border-radius: 3px;
+            font-size: 0.9em;
+            word-wrap: break-word;
+        }
+        .controls {
+            display: flex;
+            align-items: center;
+        }
+        .controls > div {
+             flex-grow: 1; /* Makes input take available space */
+             margin-right: 10px;
+        }
+    </style>
+    <!-- Load the Cast Sender API -->
+</head>
+<body>
+
+    <h1>Cast Media URL</h1>
+    <p>Enter the direct URL of a media file (MP4, MP3, M3U8, MPD etc.) to cast.</p>
+    <p><strong>Remember:</strong> This page must be served via HTTPS, and the media server must allow CORS.</p>
+
+    <div class="controls">
+        <div style="flex-grow: 1;">
+            <label for="mediaUrl">Media URL:</label>
+            <input type="url" id="mediaUrl" placeholder="https://example.com/video.mp4" required>
+        </div>
+        <div>
+            <label> </label> <!-- Spacer for alignment -->
+            <google-cast-launcher id="castLauncher"></google-cast-launcher>
+        </div>
+    </div>
+
+    <button id="castButton" disabled>Cast Media</button>
+
+    <div id="status">Initializing Cast... Please wait.</div>
+
+    <script>
+        const context = cast.framework.CastContext.getInstance();
+        const mediaUrlInput = document.getElementById('mediaUrl');
+        const castButton = document.getElementById('castButton');
+        const statusDiv = document.getElementById('status');
+        const castIcon = document.getElementById('castLauncher'); // Reference to the cast icon itself
+
+        let currentSession = null;
+        let isCastApiAvailable = false;
+
+        function updateStatus(message) {
+            console.log("Status:", message);
+            statusDiv.textContent = message;
+        }
+
+        // --- Initialization ---
+        window['__onGCastApiAvailable'] = function(isAvailable) {
+            isCastApiAvailable = isAvailable;
+            if (isAvailable) {
+                initializeCastApi();
+            } else {
+                updateStatus("Error: Google Cast API not available. Make sure you are on a supported browser/device and network.");
+                 castButton.disabled = true; // Keep disabled if API fails
+            }
+        };
+
+        function initializeCastApi() {
+            // --- Cast Options ---
+            // Use the Default Media Receiver App ID
+            const options = {};
+            options.receiverApplicationId = chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID;
+            // Auto join policy ensures sender connects to existing session on same origin
+            options.autoJoinPolicy = chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED;
+            // Resume existing session (optional)
+            options.resumeSavedSession = true;
+
+            context.setOptions(options);
+            updateStatus("Cast API Initialized. Select a Cast device using the icon.");
+
+             // --- Event Listeners for Cast State ---
+            context.addEventListener(
+                cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
+                handleSessionState);
+            context.addEventListener(
+                cast.framework.CastContextEventType.MEDIA_SESSION, // Listen for media session events on resumption
+                handleMediaSession);
+
+            // Enable cast button based on initial state
+            handleSessionState({ sessionState: context.getCastState() });
+        }
+
+        function handleSessionState(event) {
+            const castState = context.getCastState(); // Get current state directly too
+            console.log("Cast State Changed:", event.sessionState || castState);
+
+            switch (event.sessionState || castState) {
+                case cast.framework.CastState.NO_DEVICES_AVAILABLE:
+                    updateStatus("No Cast devices found on your network.");
+                    castButton.disabled = true;
+                    currentSession = null;
+                    break;
+                case cast.framework.CastState.NOT_CONNECTED:
+                    updateStatus("Cast device available. Select one using the Cast icon.");
+                    castButton.disabled = true;
+                    currentSession = null;
+                    break;
+                case cast.framework.CastState.CONNECTING:
+                    updateStatus("Connecting to Cast device...");
+                    castButton.disabled = true;
+                    break;
+                case cast.framework.CastState.CONNECTED:
+                    updateStatus("Connected to Cast device. Enter a media URL and click 'Cast Media'.");
+                    castButton.disabled = false; // Enable the button
+                    currentSession = context.getCurrentSession();
+                    // If resuming, you might already have a media session
+                    handleMediaSession({ mediaSession: currentSession?.getMediaSession() });
+                    break;
+            }
+        }
+
+        function handleMediaSession(event) {
+            // This is useful if you reconnect to a session that was already playing media
+            if (event.mediaSession) {
+                 console.log("Media session found:", event.mediaSession);
+                 if (event.mediaSession.media && event.mediaSession.media.contentId) {
+                     updateStatus(`Connected. Currently playing: ${event.mediaSession.media.metadata?.title || event.mediaSession.media.contentId}`);
+                 } else {
+                     updateStatus("Connected to Cast device. Enter a media URL and click 'Cast Media'.");
+                 }
+                 castButton.disabled = false; // Ensure button is enabled
+            } else {
+                 // This might mean the media finished or was stopped externally
+                 console.log("Media session ended or not present.");
+                 // Re-evaluate state based on connection
+                 handleSessionState({ sessionState: context.getCastState() });
+            }
+        }
+
+
+        // --- Casting Logic ---
+        castButton.addEventListener('click', () => {
+            const mediaUrl = mediaUrlInput.value.trim();
+
+            if (!mediaUrl) {
+                updateStatus("Error: Please enter a valid media URL.");
+                return;
+            }
+
+            if (!currentSession) {
+                updateStatus("Error: Not connected to a Cast device. Please connect first using the Cast icon.");
+                return;
+            }
+
+            updateStatus(`Attempting to cast: ${mediaUrl}`);
+            castButton.disabled = true; // Disable during load attempt
+
+            // --- Determine Content Type (Basic) ---
+            let contentType = 'video/mp4'; // Default guess
+            if (mediaUrl.toLowerCase().endsWith('.mp3')) {
+                contentType = 'audio/mpeg';
+            } else if (mediaUrl.toLowerCase().endsWith('.m4a')) {
+                contentType = 'audio/mp4';
+            } else if (mediaUrl.toLowerCase().endsWith('.mp4')) {
+                contentType = 'video/mp4';
+            } else if (mediaUrl.toLowerCase().endsWith('.webm')) {
+                contentType = 'video/webm';
+            } else if (mediaUrl.toLowerCase().endsWith('.m3u8')) {
+                contentType = 'application/x-mpegURL'; // HLS
+            } else if (mediaUrl.toLowerCase().endsWith('.mpd')) {
+                contentType = 'application/dash+xml'; // DASH
+            } else if (mediaUrl.toLowerCase().includes('m3u8')) {
+                 contentType = 'application/x-mpegURL'; // HLS (heuristic)
+            } else if (mediaUrl.toLowerCase().includes('mpd')) {
+                 contentType = 'application/dash+xml'; // DASH (heuristic)
+            }
+            // Add more types as needed...
+            console.log("Guessed Content Type:", contentType);
+
+
+            // --- Prepare Media Information ---
+            const mediaInfo = new chrome.cast.media.MediaInfo(mediaUrl, contentType);
+            mediaInfo.metadata = new chrome.cast.media.GenericMediaMetadata();
+            mediaInfo.metadata.metadataType = chrome.cast.media.MetadataType.GENERIC;
+            // Try to extract a title from the URL
+            try {
+                 const urlParts = mediaUrl.split('/');
+                 const filename = urlParts[urlParts.length - 1].split('?')[0]; // Get last part, remove query params
+                 mediaInfo.metadata.title = decodeURIComponent(filename || "Casted Media");
+            } catch (e) {
+                 mediaInfo.metadata.title = "Casted Media";
+            }
+
+             // Add a generic image (optional)
+            // mediaInfo.metadata.images = [
+            //     {'url': 'https://via.placeholder.com/150/4285F4/FFFFFF?text=Media'}
+            // ];
+
+            // --- Create Load Request ---
+            const request = new chrome.cast.media.LoadRequest(mediaInfo);
+            // Optional: Start playback automatically (default is true)
+            request.autoplay = true;
+            // Optional: Start at a specific time (in seconds)
+            // request.currentTime = 0;
+
+            // --- Load Media ---
+            currentSession.loadMedia(request)
+                .then(() => {
+                    updateStatus(`Successfully casting: ${mediaInfo.metadata.title}`);
+                    // Button remains disabled until disconnected or explicitly enabled elsewhere
+                    // Or you could re-enable it here if you want users to cast something else immediately
+                    // castButton.disabled = false;
+                })
+                .catch(errorCode => {
+                    console.error('Error loading media:', errorCode);
+                    // Try to provide a more specific error message
+                    let errorReason = JSON.stringify(errorCode);
+                    if (errorCode && errorCode.code === 'session_error' && errorCode.details && errorCode.details.error) {
+                        errorReason = `Session Error: ${errorCode.details.error.message || errorCode.details.error.code}`;
+                    } else if (errorCode && errorCode.code === 'load_failed') {
+                        errorReason = `Load Failed. Check media URL, format support, and CORS headers. Code: ${errorCode.code}`;
+                         if(errorCode.detailedErrorCode) {
+                             errorReason += ` (Detailed: ${errorCode.detailedErrorCode})`; // e.g., MEDIA_ERR_SRC_NOT_SUPPORTED
+                         }
+                    } else if (errorCode && errorCode.code) {
+                        errorReason = `Error Code: ${errorCode.code}`;
+                    }
+                    updateStatus(`Error casting media: ${errorReason}`);
+                    castButton.disabled = false; // Re-enable button on failure
+                });
+
+        });
+
+    </script>
+
+</body>
+</html>
