@@ -1,46 +1,328 @@
 <!doctype html>
 
 <html lang="en">
-<head>
-  <meta charset="utf-8">
 
-  <title>The HTML5 Herald</title>
-  <meta name="description" content="The HTML5 Herald">
-  <meta name="author" content="SitePoint">
+  <head>
+    <meta charset="utf-8">
 
-  <link rel="stylesheet" href="">
+    <title>pitaGO+</title>
+    <meta name="description" content="The HTML5 Herald">
 
-</head>
-<style type="text/css">
-	#ats{ 
-		color:blue;
-		font-size: 20px;
-		font-family: verdana;
-	}
-	#pit{
-		color:navy;
-		font-size: 20px;
-		font-family: verdana;
-	}
-</style>
-<body onload="skaiciuok()">
-  <script type="text/javascript">
-  	function skaiciuok(){
-  		var ilg = document.getElementById('ilgis').value;
-  		var plot = document.getElementById('plotis').value;
-  		document.getElementById('ats').innerHTML = "";
-  		document.getElementById('ats').innerHTML ="Plotis: " + ilg*plot + ' mm²';
-  		document.getElementById('pit').innerHTML = "";
-  		document.getElementById('pit').innerHTML = "Įžambinė: " + (Math.sqrt((ilg*ilg)+(plot*plot))).toFixed(2)+ " mm";
-  	}
+    <link rel="shortcut icon" type="image/png" href="roll.png">
+    <link rel="stylesheet" href="">
+    <link rel="javascript" href="rangeslider.min.js">
+
+  </head>
+  <style type="text/css">
+    #ats,
+    #rul,
+    #bri {
+      color: #16a085;
+      font-size: 30px;
+      font-family: verdana;
+    }
+
+    #pit {
+      color: #2980b9;
+      font-size: 40px;
+      font-family: verdana;
+    }
+
+    * {
+      font-family: arial;
+    }
+
+    #pav {
+      font-size: 65px;
+      color:
+        #27ae60;
+      margin: 50px;
+      text-shadow:
+        #2ecc91 1px 1px 1px;
+      font-weight: 700;
+    }
+
+    body {
+      background: #ecf0f1;
+    }
+
+    #in_line {
+      display: block ruby;
+    }
+
+    #kiekis,
+    #rulonas {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      display: inline;
+      margin: 0;
+      width: 10%;
+      height: 80px;
+      line-height: 40px;
+      font-size: 50px;
+      border: 1px solid #bbb;
+      padding: 15px;
+      border-radius: 20px;
+    }
+
+    input[type=checkbox]{
+      display: ruby;
+      background: red;
+      padding: 15px;
+    }
+
+    input[type=number],
+    input[type=url],
+    input[type=email],
+    input[type=password],
+    input[type=tel]
+     {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      display: ruby;
+      margin: 0;
+      width: 40%;
+      height: 80px;
+      line-height: 40px;
+      font-size: 50px;
+      border: 2px solid #bbb;
+      padding: 15px;
+      border-radius: 20px;
+      font-weight: 700;
+    }
+
+
+
+    input[type=number]:focus {
+      border: 2px solid #27ae60;
+    }
+
+    #title {
+      font-size: 30px;
+      color: #34495e;
+      margin: 15px;
+   
+    }
+
+
+    .slidecontainer {
+      width: 100%;
+    }
+
+    .slider {
+      -webkit-appearance: none;
+      width: 70%;
+      height: 75px;
+      background: #d3d3d3;
+      outline: none;
+      opacity: 0.7;
+      -webkit-transition: .2s;
+      transition: opacity .2s;
+    }
+
+    .slider:hover {
+      opacity: 1;
+    }
+
+    a {
+      text-decoration: none;
+    }
+
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 25px;
+      height: 25px;
+      background: #2ecc71;
+      cursor: pointer;
+    }
+
+    .slider::-moz-range-thumb {
+      width: 50px;
+      height: 50px;
+      background: #4CAF50;
+      cursor: pointer;
+    }
+    #myCanvas{
+  position: fixed;
+  left: 5px;
+  top: 5px;
+  background: none;
+  border: none;
+  z-index: -1;
+}
+
+  </style>
+  <center>
+
+    <body  onload="skaiciuok()" onresize="skaiciuok()">
+      <!-- <a href="https://meblind.github.io/index.html"><div id="pav"> λ</div></a> -->
+      <a href="https://meblind.github.io/index.html"><img style="height: 50px;" src="roll.png"></img></a>
+
+      <script type="text/javascript">
+        
+
+
+        function skaiciuok() {
+
+          var ilg = document.getElementById('ilgis').value;
+          var plot = document.getElementById('plotis').value;
+          var det = document.getElementById('kiekis').value;
+          var rul = document.getElementById('rulonas').value;
+
+          // if (document.getElementById('ilgis').value = ""){
+          //   document.getElementById('ats').innerHTML = "";
+          // }
+
+          document.getElementById('bri').innerHTML = "";
+          // document.getElementById('rul').innerHTML = "";
+          document.getElementById('ats').innerHTML = "";
+          document.getElementById('pit').innerHTML = "";
+
+          var checkbox1 = document.getElementById('br-1');
+          var checkbox2 = document.getElementById('br-2');
+          var checkbox3 = document.getElementById('rodyti');
+          // var br_plot=0;
+          // if (checkbox1.checked == true) {
+          //     br_plot = br_plot+1,5;
+              
+          // }  
+          //  if (checkbox2.checked == true) {
+          //     br_plot = br_plot+1,5;
+              
+          // }  
+
+          var mastelis = (window.innerWidth+window.innerHeight)/3*20/1000;
+          
+          document.getElementById('ats').innerHTML = "<b>Detalės plotis:</b> " + ilg * plot + ' mm² (' + (ilg * plot / 1000000).toFixed(3) + " m²) | "+ det +" detalių plotis:</b> " + ilg * plot * det + ' mm² (' + ((ilg * plot / 1000000)*det).toFixed(3) + " m²) | ";
+          document.getElementById('pit').innerHTML = "<b>Skersinė:</b> " +  (Math.sqrt((ilg * ilg) + (plot * plot))).toFixed(2) + " mm ";
+          document.getElementById('bri').innerHTML = "Reikės ~" +  ((((ilg + 30) * 2 + (plot + 30) * 2) * det) / 100000).toFixed(2) + " m briaunos. (~" + ((((((ilg + 30) * 2 + (plot + 30) * 2) * det) / 100000).toFixed(2)) / rul).toFixed(2) + " rulonų)";
+
+          document.getElementById('draw').innerHTML ='<canvas id="myCanvas" width="'+ screen.width +'px" height="'+ screen.height +'px" style="border:none;">!</canvas>';
+
+
+
+          var c = document.getElementById("myCanvas");
+          var ctx = c.getContext("2d");
+          
+          ctx.fillStyle = "#d7b371";
+          ctx.strokeStyle = "#a08458";
+          ctx.lineWidth   = 1;
+          stack=50;
+          x=0;
+          y=0;
+          
+          if (checkbox3.checked == true){
+            for (var i = 1 ; i <= det; i++){ 
+              console.log(i);
+              x++;
+              if (det>2000) 
+                break;
+             
+              ctx.strokeStyle = "#a08458";             
+              ctx.fillRect(y+i-y/3, i*0.5, plot*mastelis/100, ilg*mastelis/100);
+              ctx.strokeRect(y+i-y/3, i*0.5, plot*mastelis/100, ilg*mastelis/100);
+ if (x%50==0)
+                  y=-x*1.4
+              
+                                 
+              }   
+          }}
+            
+      
+          
+ 
+
+
+      </script>
+
+      <form  action="#" method="post" oninput="skaiciuok()">
+        <div  id="title">Ilgis:</div> <input  type="number" name="name1" id="ilgis" max="2500"> 
+      <!--   <input onclick="skaiciuok()" type="checkbox" id="br-1" value="br1"> 1.5
+        <input type="checkbox"  onclick="skaiciuok()"id="br-2" value="br2"><br> -->
+        <!-- <input type="range" min="1" max="2500" value="50" class="slider" id="myRange1"> -->
+        <div  id="title">Plotis:</div> <input  type="number" name="name2" id="plotis" max="2500"></br></br>
+        <!-- <input type="submit" name="click" value="Skaičiuoti" onclick="skaiciuok()">  -->
+        <!-- <input type="range" min="1" max="2500" value="50" class="slider" id="myRange2"> -->
+        <div  id='in_line'>
+          <div  id="title">Detalių kiekis:</div> <input type="number" name="kiekis" id="kiekis">
+          <div id="title">Briaunos ilgis rulone (m):</div> <input type="number" name="rulonas" id="rulonas">
+        </div></br></br>
+
+      </form>
+
+      <div id="demo"></div>
+      <!--   <script>
+    var slider1 = document.getElementById("myRange1");
+    var slider2 = document.getElementById("myRange2");
+    var output1 = document.getElementById("ilgis");
+    var output2 = document.getElementById("plotis");
+    output1.value = slider1.value; // Display the default slider value
+    output2.value = slider2.value;
+    // Update the current slider value (each time you drag the slider handle)
+    slider1.oninput = function() {
+  output1.value = slider1.value;
+}    
+    slider2.oninput = function() {
+  output2.value = slider2.value;
+
+} 
   </script>
+<!-- Rolled Length Calculator -->
+<div style="margin-top: 50px; border: 2px solid #16a085; padding: 20px; border-radius: 20px; width: 90%; max-width: 600px; background: #fff;">
+  <h2 style="color:#27ae60;">Rulono ilgio skaičiuoklė</h2>
 
-  <form action="#" method="post" oninput="skaiciuok()">
-  	Ilgis: <input type="text" name="name1" id="ilgis"></br>
-  	 Plotis: <input type="text" name="name2" id="plotis"></br></br>
-  	 <!-- <input type="submit" name="click" value="Skaičiuoti" onclick="skaiciuok()">  -->
-  </form>
-  <div id='pit'></div></br>
-  <div id='ats'></div>
-</body>
+  <label for="outer_diameter">Išorinis skersmuo (mm):</label><br>
+  <input type="number" id="outer_diameter" min="1" placeholder="300"><br><br>
+
+  <label for="core_diameter">Vidinis (skylės) skersmuo (mm):</label><br>
+  <input type="number" id="core_diameter" min="1" placeholder="50"><br><br>
+
+  <label for="thickness">Medžiagos storis (mm):</label><br>
+  <input type="number" id="thickness" step="0.01" min="0.01" placeholder="3"><br><br>
+
+  <button onclick="calculateRollLength()" style="font-size:20px; padding:10px 20px; background:#27ae60; color:white; border:none; border-radius:10px;">Skaičiuoti</button>
+
+  <div id="roll_result" style="margin-top:20px; font-size:20px; color:#2c3e50;"></div>
+</div>
+
+<script>
+  function calculateRollLength() {
+    const D = parseFloat(document.getElementById('outer_diameter').value);
+    const d = parseFloat(document.getElementById('core_diameter').value);
+    const t = parseFloat(document.getElementById('thickness').value);
+    const resultDiv = document.getElementById('roll_result');
+
+    if (isNaN(D) || isNaN(d) || isNaN(t) || D <= d || t <= 0) {
+      resultDiv.innerHTML = "<span style='color:red;'>Įveskite teisingas reikšmes.</span>";
+      return;
+    }
+
+    const length_mm = (Math.PI * (D * D - d * d)) / (4 * t);
+    const length_meters = length_mm / 1000;
+
+    resultDiv.innerHTML = `
+      <b>Apskaičiuotas medžiagos ilgis:</b> ${length_mm.toFixed(2)} mm<br>
+      <b>Arba:</b> ${length_meters.toFixed(2)} metrų
+    `;
+  }
+</script>
+ -->
+      <div  id='draw'></div>
+      <div  id='pit'></div></br>
+      <input onclick="skaiciuok()" type="checkbox" id="rodyti" value="br1">Rodyti</input>
+      <div  id='bri'></div><!-- reikalingas br kiekis -->
+      ________________________________________
+<!--       <div id='rul'></div>kiek reikes rulonu -->      
+      <div  id='ats'></div>
+
+  </center>
+
+
+
+<script>
+  
+</script> 
+  </body>
+
 </html>
