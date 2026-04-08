@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalių Briaunavimas</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX compilation in the browser -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body {
+            background-color: #f8fafc;
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        /* Custom scrollbar for a cleaner look */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useCallback } = React;
+
+        // --- MOCK DATA ---
+        // Fallback data if no CSV is uploaded or fetched
+        const defaultParts = [
+            { id: '1', code: 'S1-03', name: '24 End Panel LR', material: 'S1-02-51', qty: 1, cutL: 711, cutW: 595, cutT: 25, finalL: 713, finalW: 599, finalT: 25, edges: { step1: '0.4mm - 595', step2: '3mm - 711', step3: '3mm - 711', step4: '3mm - 595 A' } }
+        ];
+
+        // --- COMPONENTS ---
+
+        // 1. Part2DView Component
+        const Part2DView = ({ length, width, steps, visibleCount }) => {
+            // SVG-based 2D Visualization
+            const padding = 10;
+            const maxDim = Math.max(length, width) || 1;
+            const scale = 100 / maxDim; 
+            
+            const scaledL = length * scale;
+            const scaledW = width * scale;
+            
+            // Center the rectangle in a 120x120 viewBox
+            const x = (120 - scaledL) / 2;
+            const y = (120 - scaledW) / 2;
+
+            // Susiejame žingsnius su konkrečiomis kraštinėmis pagal matmenis
+            const mappedEdges = { top: null, bottom: null, left: null, right: null };
+            const lStr = length.toString();
+            const wStr = width.toString();
+            
+            // Regex tiksliam skaičiaus atitikimui (kad 59 neatsitiktų 595 atveju)
+            const matchLPattern = new RegExp('\\b' + lStr + '\\b');
+            const matchWPattern = new RegExp('\\b' + wStr + '\\b');
+
+            steps.forEach((step, idx) => {
+                const { val } = step;
+                
+                // 1 problema: Briaunų storių vizualinis atskyrimas
+                const isThin = val.includes('0.4');
+                const strokeWidth = isThin ? 2 : 5;
+                const color = isThin ? '#3b82f6' : '#ef4444'; // Mėlyna - plonai, Raudona - storai
+
+                let side = null;
+                const matchL = matchLPattern.test(val);
+                const matchW = matchWPattern.test(val);
+
+                // Priskiriame kraštinę pagal tai, kokį ilgį atitinka tekstas
+                if (matchL && !matchW) {
+                    if (!mappedEdges.top) side = 'top';
+                    else if (!mappedEdges.bottom) side = 'bottom';
+                } else if (matchW && !matchL) {
+                    if (!mappedEdges.left) side = 'left';
+                    else if (!mappedEdges.right) side = 'right';
+                } else {
+                    // Jei matmenys sutampa (kvadratas) arba nerasta atitikmens – dedame iš eilės
+                    if (!mappedEdges.top) side = 'top';
+                    else if (!mappedEdges.bottom) side = 'bottom';
+                    else if (!mappedEdges.left) side = 'left';
+                    else if (!mappedEdges.right) side = 'right';
+                }
+                
+                if (side) mappedEdges[side] = { ...step, idx, color, strokeWidth };
+            });
+
+            const drawEdge = (sideData, x1, y1, x2, y2) => {
+                if (!sideData) return null;
+                const isVisible = sideData.idx < visibleCount; // Animacijos logika
+                
+                return (
+                    <line 
+                        x1={x1} y1={y1} x2={x2} y2={y2} 
+                        stroke={sideData.color} 
+                        strokeWidth={sideData.strokeWidth}
+                        strokeLinecap="square"
+                        className="transition-opacity duration-300 ease-in-out"
+                        style={{ opacity: isVisible ? 1 : 0 }}
+                    />
+                );
+            };
+
+            return (
+                <div className="w-full flex justify-center items-center h-48 bg-gray-50/50 rounded-lg border border-gray-200 overflow-hidden relative">
+                    <svg viewBox="0 0 120 120" className="w-full h-full max-w-[200px] max-h-[200px]">
+                        {/* Base Board */}
+                        <rect x={x} y={y} width={scaledL} height={scaledW} fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                        
+                        {/* Edges */}
+                        {drawEdge(mappedEdges.top, x, y, x + scaledL, y)}
+                        {drawEdge(mappedEdges.bottom, x, y + scaledW, x + scaledL, y + scaledW)}
+                        {drawEdge(mappedEdges.left, x, y, x, y + scaledW)}
+                        {drawEdge(mappedEdges.right, x + scaledL, y, x + scaledL, y + scaledW)}
+                        
+                        {/* Dimensions Text inside SVG */}
+                        <text x="60" y="60" textAnchor="middle" dominantBaseline="middle" fill="#64748b" fontSize="8" fontWeight="bold" opacity="0.6">
+                            {length}x{width}
+                        </text>
+                    </svg>
+
+                    {/* Simple Axis Labels */}
+                    <div className="absolute top-1 right-2 text-[10px] text-gray-400 font-mono">L = {length}</div>
+                    <div className="absolute bottom-1 left-2 text-[10px] text-gray-400 font-mono" style={{writingMode: 'vertical-rl'}}>W = {width}</div>
+                </div>
+            );
+        };
+
+        // 2. PartCard Component
+        const PartCard = ({ part }) => {
+            const steps = [
+                { seq: 1, val: part.edges.step1 },
+                { seq: 2, val: part.edges.step2 },
+                { seq: 3, val: part.edges.step3 },
+                { seq: 4, val: part.edges.step4 }
+            ].filter(s => s.val);
+
+            // 2 problema: Animacijos valdymas
+            const maxSteps = steps.length;
+            const [visibleCount, setVisibleCount] = useState(0);
+
+            useEffect(() => {
+                if (maxSteps === 0) return;
+                const interval = setInterval(() => {
+                    setVisibleCount(prev => (prev > maxSteps ? 0 : prev + 1));
+                }, 1200); // Kiekvienas žingsnis trunka 1.2s
+                return () => clearInterval(interval);
+            }, [maxSteps]);
+
+            return (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow flex flex-col">
+                    {/* Header */}
+                    <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-start gap-3">
+                        <div className="overflow-hidden">
+                            <h3 className="font-bold text-gray-900 text-lg truncate" title={part.name}>{part.name}</h3>
+                            <p className="text-xs text-gray-500 font-medium mt-0.5 truncate">{part.code} | {part.material}</p>
+                        </div>
+                        <span className="bg-slate-800 text-white text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap">
+                            {part.qty} vnt.
+                        </span>
+                    </div>
+                    
+                    {/* Body */}
+                    <div className="p-5 flex-grow flex flex-col gap-4">
+                        {/* Dimensions */}
+                        <div className="flex gap-3">
+                            <div className="flex-1 bg-gray-50 p-2.5 rounded-lg border border-gray-100 text-center">
+                                <span className="block text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-1">Pjovimo matmenys</span>
+                                <span className="font-bold text-gray-800">{part.cutL}x{part.cutW}x{part.cutT}</span>
+                            </div>
+                            <div className="flex-1 bg-blue-50 p-2.5 rounded-lg border border-blue-100 text-center">
+                                <span className="block text-[10px] text-blue-400 font-semibold uppercase tracking-wider mb-1">Galutiniai matmenys</span>
+                                <span className="font-bold text-blue-800">{part.finalL}x{part.finalW}x{part.finalT}</span>
+                            </div>
+                        </div>
+
+                        {/* 3 problema: Briaunavimo eiga stulpelyje + Animacija */}
+                        <div className="bg-orange-50 p-3 rounded-lg border border-orange-100 flex-grow min-h-[120px]">
+                            <span className="block text-[10px] text-orange-400 font-semibold uppercase tracking-wider mb-2">Briaunavimo eiga</span>
+                            {steps.length > 0 ? (
+                                <ul className="space-y-1.5">
+                                    {steps.map((s, idx) => {
+                                        const isActive = idx < visibleCount;
+                                        const isCurrent = idx === visibleCount - 1;
+                                        return (
+                                            <li key={idx} className={`text-sm flex items-center gap-2 transition-all duration-300 ${isActive ? 'text-orange-900' : 'text-orange-300/50'}`}>
+                                                <span className={`w-2 h-2 rounded-full ${isActive ? (isCurrent ? 'bg-orange-500 animate-pulse shadow-md shadow-orange-500/50' : 'bg-orange-900') : 'bg-orange-200'}`}></span>
+                                                <span className={isActive ? 'font-bold' : 'font-medium'}>{s.seq} žingsnis:</span> 
+                                                <span>{s.val}</span>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            ) : (
+                                <span className="text-sm font-semibold text-orange-900/50">-</span>
+                            )}
+                        </div>
+                        
+                        {/* 2D Visualization with Animation Data */}
+                        <div className="mt-1">
+                            <Part2DView length={part.cutL} width={part.cutW} steps={steps} visibleCount={visibleCount} />
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // 3. Main App Component
+        const App = () => {
+            const [searchTerm, setSearchTerm] = useState('');
+            const [parts, setParts] = useState(defaultParts);
+            const [error, setError] = useState(null);
+            const [isLoading, setIsLoading] = useState(true);
+            const [selectedPart, setSelectedPart] = useState(null);
+
+            // Užrakiname fono slinkimą, kai atidarytas modalas
+            useEffect(() => {
+                if (selectedPart) {
+                    document.body.style.overflow = 'hidden';
+                } else {
+                    document.body.style.overflow = 'unset';
+                }
+                return () => { document.body.style.overflow = 'unset'; };
+            }, [selectedPart]);
+
+            // Robust CSV Parser
+            const parseCSV = useCallback((text) => {
+                try {
+                    const lines = text.split(/\r?\n/);
+                    if (lines.length === 0) throw new Error("Failas tuščias.");
+
+                    // Determine delimiter (comma or semicolon)
+                    const firstLine = lines[0];
+                    const delimiter = firstLine.includes(';') ? ';' : ',';
+                    
+                    const newParts = [];
+                    
+                    for (let i = 0; i < lines.length; i++) {
+                        const line = lines[i].trim();
+                        if (!line) continue;
+
+                        // Handle quotes if present in CSV
+                        const cols = line.split(new RegExp(`\\s*${delimiter}\\s*(?=(?:[^"]*"[^"]*")*[^"]*$)`)).map(c => c.replace(/^"|"$/g, '').trim());
+                        
+                        // Patikriname, ar eilutė atrodo kaip duomenų eilutė (5 stulpelis turi būti skaičius, atspindintis ilgį)
+                        if (cols.length >= 10 && !isNaN(parseFloat(cols[5]))) { 
+                            const formatEdge = (type, len) => {
+                                if (!type || !len) return null;
+                                const t = type.trim();
+                                const l = len.trim();
+                                return (t !== '0' && l !== '0' && t !== '-') ? `${t} - ${l}` : null;
+                            };
+
+                            newParts.push({
+                                id: crypto.randomUUID ? crypto.randomUUID() : i.toString(),
+                                code: cols[1] || '-',
+                                name: cols[2] || `Detalė ${i}`,
+                                material: cols[3] || 'Nenurodyta',
+                                qty: parseInt(cols[4]) || 1,
+                                cutL: parseFloat(cols[5]) || 0,
+                                cutW: parseFloat(cols[6]) || 0,
+                                cutT: parseFloat(cols[7]) || 0,
+                                finalL: parseFloat(cols[8]) || 0,
+                                finalW: parseFloat(cols[9]) || 0,
+                                finalT: parseFloat(cols[10]) || 0,
+                                edges: {
+                                    step1: formatEdge(cols[11], cols[12]),
+                                    step2: formatEdge(cols[13], cols[14]),
+                                    step3: formatEdge(cols[15], cols[16]),
+                                    step4: formatEdge(cols[17], cols[18])
+                                }
+                            });
+                        }
+                    }
+
+                    if (newParts.length > 0) {
+                        setParts(newParts);
+                        setError(null);
+                    } else {
+                        setError("Nepavyko nuskaityti duomenų. Patikrinkite CSV formatą.");
+                    }
+                } catch (err) {
+                    setError("Įvyko klaida skaitant failą.");
+                    console.error(err);
+                }
+            }, []);
+
+            // Fetch Data from Google Sheets CSV URL on Mount
+            useEffect(() => {
+                const fetchOnlineCSV = async () => {
+                    setIsLoading(true);
+                    try {
+                        const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQSHJJdOhsNzRuq-WmcCS1SFCUqvRlYFYU9I9rs1LL9zlJ8AQWzwB3l_1PY67wbnHxhTDTi5VrC1jRq/pub?gid=1947074840&single=true&output=csv";
+                        const response = await fetch(url);
+                        
+                        if (!response.ok) {
+                            throw new Error(`Klaida gaunant duomenis: ${response.statusText}`);
+                        }
+
+                        const text = await response.text();
+                        parseCSV(text);
+                    } catch (err) {
+                        console.error("CSV Fetch Error:", err);
+                        setError("Nepavyko gauti duomenų iš interneto nuorodos. Rodomi pavyzdiniai duomenys.");
+                    } finally {
+                        setIsLoading(false);
+                    }
+                };
+
+                fetchOnlineCSV();
+            }, [parseCSV]);
+
+            const handleFileUpload = (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => parseCSV(e.target.result);
+                reader.onerror = () => setError("Nepavyko perskaityti failo.");
+                reader.readAsText(file);
+                
+                // Reset input
+                event.target.value = null;
+            };
+
+            const downloadSampleCSV = () => {
+                const header = ",Kodas,Pavadinimas,Medziaga,Kiekis,Pjovimo_L,Pjovimo_W,Pjovimo_T,Galutinis_L,Galutinis_W,Galutinis_T,Briauna1,Ilgis1,Briauna2,Ilgis2,Briauna3,Ilgis3,Briauna4,Ilgis4,\n";
+                const rows = defaultParts.map(p => {
+                    const s1 = p.edges.step1 ? p.edges.step1.split(' - ') : ['',''];
+                    const s2 = p.edges.step2 ? p.edges.step2.split(' - ') : ['',''];
+                    const s3 = p.edges.step3 ? p.edges.step3.split(' - ') : ['',''];
+                    const s4 = p.edges.step4 ? p.edges.step4.split(' - ') : ['',''];
+                    return `,"${p.code}","${p.name}","${p.material}",${p.qty},${p.cutL},${p.cutW},${p.cutT},${p.finalL},${p.finalW},${p.finalT},"${s1[0]}","${s1[1]}","${s2[0]}","${s2[1]}","${s3[0]}","${s3[1]}","${s4[0]}","${s4[1]}",`;
+                }).join("\n");
+                
+                const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.setAttribute("href", url);
+                link.setAttribute("download", "briaunavimas_sablonas.csv");
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            const filteredParts = useMemo(() => {
+                const searchLower = searchTerm.toLowerCase().trim();
+                if (!searchLower) return parts;
+                
+                return parts.filter(p => {
+                    // Sukuriame bendrą eilutę paieškai, kad suveiktų ir tokios paieškos kaip "711x595", "711 x 595" ar atskiri skaičiai
+                    const searchableString = `
+                        ${p.code} ${p.name} ${p.material} 
+                        ${p.cutL} ${p.cutW} ${p.cutT} 
+                        ${p.cutL}x${p.cutW}x${p.cutT} 
+                        ${p.cutL} x ${p.cutW} x ${p.cutT} 
+                        ${p.finalL} ${p.finalW} ${p.finalT}
+                        ${p.finalL}x${p.finalW}x${p.finalT}
+                        ${p.finalL} x ${p.finalW} x ${p.finalT}
+                    `.toLowerCase();
+                    
+                    return searchableString.includes(searchLower);
+                });
+            }, [parts, searchTerm]);
+
+            return (
+                <div className="min-h-screen pb-12">
+                    {/* Header bar */}
+                    <header className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <svg className="w-8 h-8 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="3" y1="9" x2="21" y2="9"></line>
+                                    <line x1="9" y1="21" x2="9" y2="9"></line>
+                                </svg>
+                                <h1 className="text-xl font-bold text-gray-900 hidden sm:block">Briaunavimas</h1>
+                            </div>
+                            
+                            <div className="flex items-center gap-4 flex-1 justify-end">
+                                <div className="relative w-full max-w-xs hidden md:block">
+                                    <svg className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                    <input 
+                                        type="text" 
+                                        placeholder="Ieškoti (pavadinimas, kodas, matmenys)..." 
+                                        className="w-full pl-9 pr-4 py-1.5 text-sm border border-gray-300 rounded-md bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                    />
+                                </div>
+                                
+                                <button onClick={downloadSampleCSV} className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors hidden sm:block" title="Atsisiųsti CSV šabloną">
+                                    Šablonas
+                                </button>
+
+                                <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white py-1.5 px-4 rounded-md shadow-sm transition-colors text-sm font-medium flex items-center gap-2">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                                    <span className="hidden sm:inline">Įkelti CSV</span>
+                                    <span className="sm:hidden">Įkelti</span>
+                                    <input type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
+                                </label>
+                            </div>
+                        </div>
+                        {/* Mobile Search */}
+                        <div className="md:hidden px-4 pb-3">
+                             <div className="relative w-full">
+                                <svg className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                <input 
+                                    type="text" 
+                                    placeholder="Ieškoti (pavadinimas, kodas, matmenys)..." 
+                                    className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-md bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
+                        {/* Status/Error Messages */}
+                        {error && (
+                            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-center gap-3">
+                                <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <p className="text-sm font-medium">{error}</p>
+                                <button onClick={() => setError(null)} className="ml-auto text-red-500 hover:text-red-800">✕</button>
+                            </div>
+                        )}
+
+                        <div className="mb-6 flex justify-between items-end">
+                            <div>
+                                <h2 className="text-2xl font-bold text-gray-900">Detalių sąrašas</h2>
+                                <p className="text-sm text-gray-500 mt-1">
+                                    {isLoading ? 'Siunčiami duomenys...' : `Rodoma ${filteredParts.length} iš ${parts.length} detalių`}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Parts Grid or Loading State */}
+                        {isLoading ? (
+                            <div className="text-center py-20 bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col items-center">
+                                <svg className="animate-spin h-8 w-8 text-blue-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <h3 className="text-base font-semibold text-gray-900">Kraunami duomenys...</h3>
+                                <p className="mt-1 text-sm text-gray-500 max-w-sm mx-auto">Jungiamasi prie Google Sheets</p>
+                            </div>
+                        ) : filteredParts.length === 0 ? (
+                            <div className="text-center py-20 bg-white rounded-xl border border-gray-200 shadow-sm">
+                                <div className="mx-auto w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                                    <svg className="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                </div>
+                                <h3 className="text-base font-semibold text-gray-900">Nerasta jokių detalių</h3>
+                                <p className="mt-1 text-sm text-gray-500 max-w-sm mx-auto">Pabandykite pakeisti paieškos kriterijus arba įkelkite tinkamo formato CSV failą.</p>
+                            </div>
+                        ) : (
+                            <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
+                                {/* Desktop Lentelė */}
+                                <div className="hidden md:block overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-6 py-3 text-left font-semibold text-gray-500 uppercase tracking-wider">Kodas</th>
+                                                <th className="px-6 py-3 text-left font-semibold text-gray-500 uppercase tracking-wider">Pavadinimas</th>
+                                                <th className="px-6 py-3 text-left font-semibold text-gray-500 uppercase tracking-wider">Medžiaga</th>
+                                                <th className="px-6 py-3 text-left font-semibold text-gray-500 uppercase tracking-wider">Pjovimas (L x W x T)</th>
+                                                <th className="px-6 py-3 text-center font-semibold text-gray-500 uppercase tracking-wider">Kiekis</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-200">
+                                            {filteredParts.map(part => (
+                                                <tr key={part.id} onClick={() => setSelectedPart(part)} className="hover:bg-blue-50 cursor-pointer transition-colors group">
+                                                    <td className="px-6 py-4 whitespace-nowrap font-bold text-gray-900">{part.code}</td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-gray-700">{part.name}</td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-gray-600">{part.material}</td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-gray-600 font-mono text-xs">
+                                                        {part.cutL} x {part.cutW} x {part.cutT}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                        <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-gray-100 font-bold text-gray-800 group-hover:bg-blue-100 group-hover:text-blue-800 transition-colors">
+                                                            {part.qty}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {/* Mobile Sąrašas */}
+                                <div className="md:hidden divide-y divide-gray-100">
+                                    {filteredParts.map(part => (
+                                        <div key={part.id} onClick={() => setSelectedPart(part)} className="p-4 hover:bg-blue-50 active:bg-blue-100 cursor-pointer transition-colors flex justify-between items-center">
+                                            <div className="flex flex-col gap-1 overflow-hidden pr-3">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-gray-900">{part.code}</span>
+                                                    <span className="text-sm font-medium text-gray-700 truncate">{part.name}</span>
+                                                </div>
+                                                <span className="text-xs text-gray-500 font-mono mt-0.5">
+                                                    {part.cutL} x {part.cutW} x {part.cutT} | {part.material}
+                                                </span>
+                                            </div>
+                                            <span className="bg-gray-100 text-gray-800 text-xs font-bold px-2.5 py-1.5 rounded-full whitespace-nowrap shadow-sm">
+                                                {part.qty} vnt.
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    {/* Modalas su Detalės Kortele */}
+                    {selectedPart && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+                            {/* Fono patamsinimas */}
+                            <div 
+                                className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" 
+                                onClick={() => setSelectedPart(null)}
+                            ></div>
+                            
+                            {/* Kortelės konteineris */}
+                            <div className="relative w-full max-w-lg z-10 flex flex-col animate-fade-in-up">
+                                <div className="flex justify-end mb-3">
+                                    <button 
+                                        onClick={() => setSelectedPart(null)} 
+                                        className="text-white bg-black/40 hover:bg-black/60 rounded-full p-2 backdrop-blur-md transition-colors"
+                                        title="Uždaryti"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div className="max-h-[85vh] overflow-y-auto rounded-xl bg-white shadow-2xl">
+                                    <PartCard part={selectedPart} />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // Render Application
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
