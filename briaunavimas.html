@@ -60,7 +60,8 @@
                 errEmpty: "Failas tuščias.",
                 errParse: "Nepavyko nuskaityti duomenų. Patikrinkite CSV formatą.",
                 errRead: "Įvyko klaida skaitant failą.",
-                errFetch: "Nepavyko gauti duomenų iš interneto nuorodos. Rodomi pavyzdiniai duomenys."
+                errFetch: "Nepavyko gauti duomenų iš interneto nuorodos. Rodomi pavyzdiniai duomenys.",
+                notes: "Pastabos"
             },
             en: {
                 title: "Edge Banding",
@@ -88,7 +89,8 @@
                 errEmpty: "File is empty.",
                 errParse: "Failed to parse data. Please check CSV format.",
                 errRead: "Error reading file.",
-                errFetch: "Failed to fetch data from the internet. Showing sample data."
+                errFetch: "Failed to fetch data from the internet. Showing sample data.",
+                notes: "Notes"
             },
             uk: {
                 title: "Кромкування",
@@ -116,14 +118,15 @@
                 errEmpty: "Файл порожній.",
                 errParse: "Не вдалося прочитати дані. Перевірте формат CSV.",
                 errRead: "Помилка читання файлу.",
-                errFetch: "Не вдалося отримати дані з Інтернету. Показано зразки даних."
+                errFetch: "Не вдалося отримати дані з Інтернету. Показано зразки даних.",
+                notes: "Примітки"
             }
         };
 
         // --- MOCK DATA ---
         // Fallback data if no CSV is uploaded or fetched
         const defaultParts = [
-            { id: '1', code: 'S1-03', name: '24 End Panel LR', material: 'S1-02-51', qty: 1, cutL: 711, cutW: 595, cutT: 25, finalL: 713, finalW: 599, finalT: 25, edges: { step1: '0.4mm - 595', step2: '3mm - 711', step3: '3mm - 711', step4: '3mm - 595 A' } }
+            { id: '1', code: 'S1-03', name: '24 End Panel LR', material: 'S1-02-51', qty: 1, cutL: 711, cutW: 595, cutT: 25, finalL: 713, finalW: 599, finalT: 25, edges: { step1: '0.4mm - 595', step2: '3mm - 711', step3: '3mm - 711', step4: '3mm - 595 A' }, note: 'Dėmesio: atkreipti dėmesį į tekstūros kryptį frezuojant!' }
         ];
 
         // --- COMPONENTS ---
@@ -144,12 +147,10 @@
 
             // Susiejame žingsnius su konkrečiomis kraštinėmis pagal matmenis
             const mappedEdges = { top: null, bottom: null, left: null, right: null };
-            const lStr = length.toString();
-            const wStr = width.toString();
             
-            // Regex tiksliam skaičiaus atitikimui (kad 59 neatsitiktų 595 atveju)
-            const matchLPattern = new RegExp('\\b' + lStr + '\\b');
-            const matchWPattern = new RegExp('\\b' + wStr + '\\b');
+            // Patobulinta paieška (Regex), kuri randa tikslų skaičių net jei prie jo prilipusi raidė 'A' (pvz. '595A')
+            const matchLPattern = new RegExp('(^|\\D)' + length + '(\\D|$)');
+            const matchWPattern = new RegExp('(^|\\D)' + width + '(\\D|$)');
 
             steps.forEach((step, idx) => {
                 const { val } = step;
@@ -184,32 +185,21 @@
                 if (side) mappedEdges[side] = { ...step, idx, color, strokeWidth, isRounded };
             });
 
-            const drawEdge = (sideData, x1, y1, x2, y2) => {
-                if (!sideData) return null;
-                const isVisible = sideData.idx < visibleCount; // Animacijos logika
-                
-                return (
-                    <g className="transition-opacity duration-300 ease-in-out" style={{ opacity: isVisible ? 1 : 0 }}>
-                        {/* Jei apvalinta, pridedame kiek storesnį baltą kontūrą.
-                            Jis vizualiai "nupjauna" (nuimituoja frezą) po apačia esančios kitos briaunos aštrų kampą,
-                            todėl apvalus mūsų spalvos galiukas tobulai išryškėja ir nebesusilieja su fonu. */}
-                        {sideData.isRounded && (
-                            <line 
-                                x1={x1} y1={y1} x2={x2} y2={y2} 
-                                stroke="#ffffff" 
-                                strokeWidth={sideData.strokeWidth + 3}
-                                strokeLinecap="round"
-                            />
-                        )}
-                        <line 
-                            x1={x1} y1={y1} x2={x2} y2={y2} 
-                            stroke={sideData.color} 
-                            strokeWidth={sideData.strokeWidth}
-                            strokeLinecap={sideData.isRounded ? "round" : "square"} 
-                        />
-                    </g>
-                );
-            };
+            // Surenkame visas priskirtas kraštines į bendrą masyvą
+            const edgesArray = [];
+            if (mappedEdges.top) edgesArray.push({ ...mappedEdges.top, coords: [x, y, x + scaledL, y] });
+            if (mappedEdges.bottom) edgesArray.push({ ...mappedEdges.bottom, coords: [x, y + scaledW, x + scaledL, y + scaledW] });
+            if (mappedEdges.left) edgesArray.push({ ...mappedEdges.left, coords: [x, y, x, y + scaledW] });
+            if (mappedEdges.right) edgesArray.push({ ...mappedEdges.right, coords: [x + scaledL, y, x + scaledL, y + scaledW] });
+
+            // Svarbiausia dalis: Rūšiuojame sluoksnius piešimui (SVG "dailininko" algoritmas).
+            // Apvalintos briaunos VISADA piešiamos paskutinės (ant viršaus), kad kitų kraštinių statūs kampai jų neuždengtų.
+            edgesArray.sort((a, b) => {
+                if (a.isRounded && !b.isRounded) return 1;
+                if (!a.isRounded && b.isRounded) return -1;
+                // Priešingu atveju rikiuojame pagal eiliškumą (idx)
+                return a.idx - b.idx;
+            });
 
             return (
                 <div className="w-full flex justify-center items-center h-48 bg-gray-50/50 rounded-lg border border-gray-200 overflow-hidden relative">
@@ -217,11 +207,31 @@
                         {/* Base Board */}
                         <rect x={x} y={y} width={scaledL} height={scaledW} fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
 
-                        {/* Edges */}
-                        {drawEdge(mappedEdges.top, x, y, x + scaledL, y)}
-                        {drawEdge(mappedEdges.bottom, x, y + scaledW, x + scaledL, y + scaledW)}
-                        {drawEdge(mappedEdges.left, x, y, x, y + scaledW)}
-                        {drawEdge(mappedEdges.right, x + scaledL, y, x + scaledL, y + scaledW)}
+                        {/* Edges - piešiami dinamiškai pagal masyvą */}
+                        {edgesArray.map(edgeData => {
+                            const isVisible = edgeData.idx < visibleCount;
+                            const [x1, y1, x2, y2] = edgeData.coords;
+                            return (
+                                <g key={edgeData.idx} className="transition-opacity duration-300 ease-in-out" style={{ opacity: isVisible ? 1 : 0 }}>
+                                    {/* Jei apvalinta, pridedame kiek storesnį baltą kontūrą.
+                                        Jis vizualiai "nupjauna" (nuimituoja frezą) po apačia esančios kitos briaunos aštrų kampą. */}
+                                    {edgeData.isRounded && (
+                                        <line 
+                                            x1={x1} y1={y1} x2={x2} y2={y2} 
+                                            stroke="#ffffff" 
+                                            strokeWidth={edgeData.strokeWidth + 4}
+                                            strokeLinecap="round"
+                                        />
+                                    )}
+                                    <line 
+                                        x1={x1} y1={y1} x2={x2} y2={y2} 
+                                        stroke={edgeData.color} 
+                                        strokeWidth={edgeData.strokeWidth}
+                                        strokeLinecap={edgeData.isRounded ? "round" : "square"} 
+                                    />
+                                </g>
+                            );
+                        })}
                         
                         {/* Dimensions Text inside SVG */}
                         <text x="60" y="60" textAnchor="middle" dominantBaseline="middle" fill="#64748b" fontSize="8" fontWeight="bold" opacity="0.6">
@@ -310,6 +320,19 @@
                         <div className="mt-1">
                             <Part2DView length={part.cutL} width={part.cutW} steps={steps} visibleCount={visibleCount} />
                         </div>
+
+                        {/* Pastabų laukelis (rodomas tik jei yra pastaba) */}
+                        {part.note && (
+                            <div className="mt-1 bg-amber-50 p-3 rounded-lg border border-amber-200">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                    <svg className="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <span className="block text-[10px] text-amber-600 font-semibold uppercase tracking-wider">{t.notes}</span>
+                                </div>
+                                <p className="text-sm text-amber-900 font-medium whitespace-pre-wrap">{part.note}</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             );
@@ -381,7 +404,8 @@
                                     step2: formatEdge(cols[13], cols[14]),
                                     step3: formatEdge(cols[15], cols[16]),
                                     step4: formatEdge(cols[17], cols[18])
-                                }
+                                },
+                                note: cols[19] ? cols[19].replace(/^"|"$/g, '').trim() : ''
                             });
                         }
                     }
@@ -436,26 +460,6 @@
                 event.target.value = null;
             };
 
-            const downloadSampleCSV = () => {
-                const header = ",Kodas,Pavadinimas,Medziaga,Kiekis,Pjovimo_L,Pjovimo_W,Pjovimo_T,Galutinis_L,Galutinis_W,Galutinis_T,Briauna1,Ilgis1,Briauna2,Ilgis2,Briauna3,Ilgis3,Briauna4,Ilgis4,\n";
-                const rows = defaultParts.map(p => {
-                    const s1 = p.edges.step1 ? p.edges.step1.split(' - ') : ['',''];
-                    const s2 = p.edges.step2 ? p.edges.step2.split(' - ') : ['',''];
-                    const s3 = p.edges.step3 ? p.edges.step3.split(' - ') : ['',''];
-                    const s4 = p.edges.step4 ? p.edges.step4.split(' - ') : ['',''];
-                    return `,"${p.code}","${p.name}","${p.material}",${p.qty},${p.cutL},${p.cutW},${p.cutT},${p.finalL},${p.finalW},${p.finalT},"${s1[0]}","${s1[1]}","${s2[0]}","${s2[1]}","${s3[0]}","${s3[1]}","${s4[0]}","${s4[1]}",`;
-                }).join("\n");
-                
-                const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.setAttribute("href", url);
-                link.setAttribute("download", "briaunavimas_sablonas.csv");
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            };
-
             const filteredParts = useMemo(() => {
                 const searchLower = searchTerm.toLowerCase().trim();
                 if (!searchLower) return parts;
@@ -491,16 +495,6 @@
                             </div>
                             
                             <div className="flex items-center gap-4 flex-1 justify-end">
-                                <select 
-                                    value={lang} 
-                                    onChange={(e) => setLang(e.target.value)}
-                                    className="bg-transparent text-gray-600 text-sm font-bold hover:text-gray-900 focus:outline-none cursor-pointer uppercase border border-gray-200 rounded px-2 py-1"
-                                >
-                                    <option value="lt">LT</option>
-                                    <option value="en">EN</option>
-                                    <option value="uk">UK</option>
-                                </select>
-
                                 <div className="relative w-full max-w-xs hidden md:block">
                                     <svg className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                                     <input 
@@ -512,9 +506,12 @@
                                     />
                                 </div>
                                 
-                                <button onClick={downloadSampleCSV} className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors hidden sm:block" title="Atsisiųsti CSV šabloną">
-                                    {t.template}
-                                </button>
+                                {/* Desktop Language Flags */}
+                                <div className="hidden sm:flex items-center gap-2 border-r border-gray-200 pr-4 mr-1">
+                                    <button onClick={() => setLang('lt')} className={`text-xl transition-all duration-200 hover:scale-110 ${lang === 'lt' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`} title="Lietuvių">🇱🇹</button>
+                                    <button onClick={() => setLang('en')} className={`text-xl transition-all duration-200 hover:scale-110 ${lang === 'en' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`} title="English">🇬🇧</button>
+                                    <button onClick={() => setLang('uk')} className={`text-xl transition-all duration-200 hover:scale-110 ${lang === 'uk' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`} title="Українська">🇺🇦</button>
+                                </div>
 
                                 <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white py-1.5 px-4 rounded-md shadow-sm transition-colors text-sm font-medium flex items-center gap-2">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
@@ -524,8 +521,8 @@
                                 </label>
                             </div>
                         </div>
-                        {/* Mobile Search */}
-                        <div className="md:hidden px-4 pb-3">
+                        {/* Mobile Search and Flags */}
+                        <div className="md:hidden px-4 pb-3 flex items-center gap-3">
                              <div className="relative w-full">
                                 <svg className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                                 <input 
@@ -535,6 +532,12 @@
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
+                            </div>
+                            {/* Mobile Language Flags */}
+                            <div className="flex sm:hidden items-center gap-2 shrink-0">
+                                <button onClick={() => setLang('lt')} className={`text-xl transition-all duration-200 ${lang === 'lt' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale'}`}>🇱🇹</button>
+                                <button onClick={() => setLang('en')} className={`text-xl transition-all duration-200 ${lang === 'en' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale'}`}>🇬🇧</button>
+                                <button onClick={() => setLang('uk')} className={`text-xl transition-all duration-200 ${lang === 'uk' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale'}`}>🇺🇦</button>
                             </div>
                         </div>
                     </header>
