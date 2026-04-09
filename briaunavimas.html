@@ -375,20 +375,39 @@
                         const line = lines[i].trim();
                         if (!line) continue;
 
-                        // Handle quotes if present in CSV
-                        const cols = line.split(new RegExp(`\\s*${delimiter}\\s*(?=(?:[^"]*"[^"]*")*[^"]*$)`)).map(c => c.replace(/^"|"$/g, '').trim());
+                        // SAUGUS CSV išskyrimas (vietoj pavojingo RegEx). Neleidžia naršyklei užšalti.
+                        let cols = [];
+                        let curr = '';
+                        let inQuotes = false;
+                        for (let j = 0; j < line.length; j++) {
+                            if (line[j] === '"') {
+                                inQuotes = !inQuotes;
+                            } else if (line[j] === delimiter && !inQuotes) {
+                                cols.push(curr.trim());
+                                curr = '';
+                            } else {
+                                curr += line[j];
+                            }
+                        }
+                        cols.push(curr.trim());
+                        cols = cols.map(c => c.replace(/^"|"$/g, '').trim());
                         
                         // Patikriname, ar eilutė atrodo kaip duomenų eilutė (5 stulpelis turi būti skaičius, atspindintis ilgį)
                         if (cols.length >= 10 && !isNaN(parseFloat(cols[5]))) { 
                             const formatEdge = (type, len) => {
                                 if (!type || !len) return null;
-                                const t = type.trim();
-                                const l = len.trim();
-                                return (t !== '0' && l !== '0' && t !== '-') ? `${t} - ${l}` : null;
+                                const typeTrim = type.trim();
+                                const lenTrim = len.trim();
+                                return (typeTrim !== '0' && lenTrim !== '0' && typeTrim !== '-') ? `${typeTrim} - ${lenTrim}` : null;
                             };
 
+                            // Saugus unikalaus ID generavimas (apsaugo nuo klaidų, jei 'crypto' objektas neprieinamas)
+                            const safeId = (typeof crypto !== 'undefined' && crypto.randomUUID) 
+                                ? crypto.randomUUID() 
+                                : `item-${i}-${Date.now()}`;
+
                             newParts.push({
-                                id: crypto.randomUUID ? crypto.randomUUID() : i.toString(),
+                                id: safeId,
                                 code: cols[1] || '-',
                                 name: cols[2] || `Detalė ${i}`,
                                 material: cols[3] || 'Nenurodyta',
@@ -586,22 +605,26 @@
                                     <table className="min-w-full divide-y divide-gray-200 text-sm">
                                         <thead className="bg-gray-50">
                                             <tr>
-                                                <th className="px-6 py-3 text-left font-semibold text-gray-500 uppercase tracking-wider">{t.collection}</th>
                                                 <th className="px-6 py-3 text-left font-semibold text-gray-500 uppercase tracking-wider">{t.name}</th>
                                                 <th className="px-6 py-3 text-left font-semibold text-gray-500 uppercase tracking-wider">{t.cutting} (L x W x T)</th>
                                                 <th className="px-6 py-3 text-left font-semibold text-gray-500 uppercase tracking-wider">{t.final} (L x W x T)</th>
+                                                <th className="px-6 py-3 text-right font-semibold text-gray-500 uppercase tracking-wider">{t.collection}</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-200">
                                             {filteredParts.map(part => (
                                                 <tr key={part.id} onClick={() => setSelectedPart(part)} className="hover:bg-blue-50 cursor-pointer transition-colors group">
-                                                    <td className="px-6 py-4 whitespace-nowrap font-bold text-gray-900">{part.code}</td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-gray-700">{part.name}</td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-gray-900 font-bold">{part.name}</td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-gray-600 font-mono text-xs">
                                                         {part.cutL} x {part.cutW} x {part.cutT}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-blue-600 font-mono text-xs font-semibold">
                                                         {part.finalL} x {part.finalW} x {part.finalT}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                        <span className="bg-slate-800 text-white text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap shadow-sm">
+                                                            {part.code}
+                                                        </span>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -613,9 +636,11 @@
                                 <div className="md:hidden divide-y divide-gray-100">
                                     {filteredParts.map(part => (
                                         <div key={part.id} onClick={() => setSelectedPart(part)} className="p-4 hover:bg-blue-50 active:bg-blue-100 cursor-pointer transition-colors flex flex-col gap-2">
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-bold text-gray-900">{part.code}</span>
-                                                <span className="text-sm font-medium text-gray-700 truncate">{part.name}</span>
+                                            <div className="flex justify-between items-start gap-2">
+                                                <span className="text-sm font-bold text-gray-900">{part.name}</span>
+                                                <span className="bg-slate-800 text-white text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 shadow-sm">
+                                                    {part.code}
+                                                </span>
                                             </div>
                                             <div className="flex gap-6 text-xs font-mono mt-0.5">
                                                 <div className="flex flex-col">
