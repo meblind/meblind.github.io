@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="lt">
+<html lang="lt" class="transition-colors duration-200">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +7,19 @@
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        flatBlue: '#3498db',
+                        flatRed: '#e74c3c'
+                    }
+                }
+            }
+        }
+    </script>
     
     <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -17,7 +30,6 @@
 
     <style>
         body {
-            background-color: #f8fafc;
             font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         }
         /* Custom scrollbar for a cleaner look */
@@ -25,9 +37,11 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        html.dark ::-webkit-scrollbar-thumb { background: #475569; }
+        html.dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
     </style>
 </head>
-<body>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 transition-colors duration-200">
     <div id="root"></div>
 
     <script type="text/babel">
@@ -37,7 +51,6 @@
             lt: {
                 title: "Briaunavimas",
                 search: "Ieškoti (pavadinimas, kodas, matmenys)...",
-                template: "Šablonas",
                 uploadDesktop: "Įkelti CSV",
                 uploadMobile: "Įkelti",
                 loading: "Kraunami duomenys...",
@@ -61,12 +74,13 @@
                 errParse: "Nepavyko nuskaityti duomenų. Patikrinkite CSV formatą.",
                 errRead: "Įvyko klaida skaitant failą.",
                 errFetch: "Nepavyko gauti duomenų iš interneto nuorodos. Rodomi pavyzdiniai duomenys.",
-                notes: "Pastabos"
+                notes: "Pastabos",
+                themeToggle: "Keisti temą",
+                textSizeToggle: "Keisti teksto dydį"
             },
             en: {
                 title: "Edge Banding",
                 search: "Search (name, code, dimensions)...",
-                template: "Template",
                 uploadDesktop: "Upload CSV",
                 uploadMobile: "Upload",
                 loading: "Loading data...",
@@ -90,12 +104,13 @@
                 errParse: "Failed to parse data. Please check CSV format.",
                 errRead: "Error reading file.",
                 errFetch: "Failed to fetch data from the internet. Showing sample data.",
-                notes: "Notes"
+                notes: "Notes",
+                themeToggle: "Toggle theme",
+                textSizeToggle: "Change text size"
             },
             uk: {
                 title: "Кромкування",
                 search: "Пошук (назва, код, розміри)...",
-                template: "Шаблон",
                 uploadDesktop: "Завантажити CSV",
                 uploadMobile: "Завантаж.",
                 loading: "Завантаження даних...",
@@ -119,55 +134,52 @@
                 errParse: "Не вдалося прочитати дані. Перевірте формат CSV.",
                 errRead: "Помилка читання файлу.",
                 errFetch: "Не вдалося отримати дані з Інтернету. Показано зразки даних.",
-                notes: "Примітки"
+                notes: "Примітки",
+                themeToggle: "Змінити тему",
+                textSizeToggle: "Змінити розмір тексту"
             }
         };
 
         // --- MOCK DATA ---
-        // Fallback data if no CSV is uploaded or fetched
         const defaultParts = [
-            { id: '1', code: 'S1-03', name: '24 End Panel LR', material: 'S1-02-51', qty: 1, cutL: 711, cutW: 595, cutT: 25, finalL: 713, finalW: 599, finalT: 25, edges: { step1: '0.4mm - 595', step2: '3mm - 711', step3: '3mm - 711', step4: '3mm - 595 A' }, note: 'Dėmesio: atkreipti dėmesį į tekstūros kryptį frezuojant!' }
+            { id: '1', code: 'S1-03', name: '24 End Panel LR', material: 'S1-02-51', qty: 1, cutL: 711, cutW: 595, cutT: 18, finalL: 713, finalW: 599, finalT: 18, edges: { step1: '0.4mm - 595', step2: '3mm - 711', step3: '3mm - 711 F', step4: '3mm - 595 A F' }, note: 'Dėmesio: atkreipti dėmesį į tekstūros kryptį frezuojant!' }
         ];
 
         // --- COMPONENTS ---
 
-        // 1. Part2DView Component
-        const Part2DView = ({ length, width, steps, visibleCount }) => {
-            // SVG-based 2D Visualization
-            const padding = 10;
+        // 1. Part2DView Component (Top-down view)
+        const Part2DView = ({ length, width, steps, visibleCount, isDark, clipId }) => {
             const maxDim = Math.max(length, width) || 1;
             const scale = 100 / maxDim; 
             
             const scaledL = length * scale;
             const scaledW = width * scale;
             
-            // Center the rectangle in a 120x120 viewBox
             const x = (120 - scaledL) / 2;
             const y = (120 - scaledW) / 2;
 
-            // Susiejame žingsnius su konkrečiomis kraštinėmis pagal matmenis
             const mappedEdges = { top: null, bottom: null, left: null, right: null };
             
-            // Patobulinta paieška (Regex), kuri randa tikslų skaičių net jei prie jo prilipusi raidė 'A' (pvz. '595A')
             const matchLPattern = new RegExp('(^|\\D)' + length + '(\\D|$)');
             const matchWPattern = new RegExp('(^|\\D)' + width + '(\\D|$)');
 
             steps.forEach((step, idx) => {
                 const { val } = step;
                 
-                // 1 problema: Briaunų storių vizualinis atskyrimas
                 const isThin = val.includes('0.4');
-                const strokeWidth = isThin ? 2 : 5; 
-                const color = isThin ? '#3498db' : '#e74c3c'; // Flat UI: Peter River (mėlyna) ir Alizarin (raudona)
-
-                // Kampų apvalinimas (jei žingsnyje nurodyta raidė A)
+                const strokeWidth = isThin ? 2.5 : 6; 
+                // Color representing the PVC banding strips (like in the visualizer)
+                const fill = isThin 
+                    ? (isDark ? "#475569" : "#E5C19E") 
+                    : (isDark ? "#64748b" : "#D4A373");
+                
                 const isRounded = val.toUpperCase().includes('A');
+                const isFluted = val.toUpperCase().includes('F');
 
                 let side = null;
                 const matchL = matchLPattern.test(val);
                 const matchW = matchWPattern.test(val);
 
-                // Priskiriame kraštinę pagal tai, kokį ilgį atitinka tekstas
                 if (matchL && !matchW) {
                     if (!mappedEdges.top) side = 'top';
                     else if (!mappedEdges.bottom) side = 'bottom';
@@ -175,79 +187,147 @@
                     if (!mappedEdges.left) side = 'left';
                     else if (!mappedEdges.right) side = 'right';
                 } else {
-                    // Jei matmenys sutampa (kvadratas) arba nerasta atitikmens – dedame iš eilės
                     if (!mappedEdges.top) side = 'top';
                     else if (!mappedEdges.bottom) side = 'bottom';
                     else if (!mappedEdges.left) side = 'left';
                     else if (!mappedEdges.right) side = 'right';
                 }
                 
-                if (side) mappedEdges[side] = { ...step, idx, color, strokeWidth, isRounded };
+                if (side) mappedEdges[side] = { ...step, idx, fill, strokeWidth, isRounded, isFluted, side };
             });
 
-            // Surenkame visas priskirtas kraštines į bendrą masyvą
-            const edgesArray = [];
-            if (mappedEdges.top) edgesArray.push({ ...mappedEdges.top, coords: [x, y, x + scaledL, y] });
-            if (mappedEdges.bottom) edgesArray.push({ ...mappedEdges.bottom, coords: [x, y + scaledW, x + scaledL, y + scaledW] });
-            if (mappedEdges.left) edgesArray.push({ ...mappedEdges.left, coords: [x, y, x, y + scaledW] });
-            if (mappedEdges.right) edgesArray.push({ ...mappedEdges.right, coords: [x + scaledL, y, x + scaledL, y + scaledW] });
+            // Sort so they stack accurately in the sequence they are applied
+            const edgesArray = Object.values(mappedEdges).filter(Boolean);
+            edgesArray.sort((a, b) => a.idx - b.idx);
 
-            // Svarbiausia dalis: Rūšiuojame sluoksnius piešimui (SVG "dailininko" algoritmas).
-            // Apvalintos briaunos VISADA piešiamos paskutinės (ant viršaus), kad kitų kraštinių statūs kampai jų neuždengtų.
-            edgesArray.sort((a, b) => {
-                if (a.isRounded && !b.isRounded) return 1;
-                if (!a.isRounded && b.isRounded) return -1;
-                // Priešingu atveju rikiuojame pagal eiliškumą (idx)
-                return a.idx - b.idx;
-            });
+            // Determine corner rounding radii (mimicking a corner rounding unit)
+            const R = 8; // Visual representation of the corner cut
+            const eps = 0.01; // Tiny epsilon to preserve SVG structure for CSS morphing
+            let rtl = eps, rtr = eps, rbl = eps, rbr = eps;
+
+            const isActive = (side) => mappedEdges[side] && mappedEdges[side].idx < visibleCount;
+            const isRounded = (side) => isActive(side) && mappedEdges[side].isRounded;
+
+            // A corner gets rounded if either of its adjacent banded edges goes through the rounding process
+            if (isRounded('top') || isRounded('left')) rtl = R;
+            if (isRounded('top') || isRounded('right')) rtr = R;
+            if (isRounded('bottom') || isRounded('right')) rbr = R;
+            if (isRounded('bottom') || isRounded('left')) rbl = R;
+
+            // Master clip path representing the final machined shape of the board
+            const boardPathD = `
+                M ${x + rtl} ${y}
+                L ${x + scaledL - rtr} ${y}
+                A ${rtr} ${rtr} 0 0 1 ${x + scaledL} ${y + rtr}
+                L ${x + scaledL} ${y + scaledW - rbr}
+                A ${rbr} ${rbr} 0 0 1 ${x + scaledL - rbr} ${y + scaledW}
+                L ${x + rbl} ${y + scaledW}
+                A ${rbl} ${rbl} 0 0 1 ${x} ${y + scaledW - rbl}
+                L ${x} ${y + rtl}
+                A ${rtl} ${rtl} 0 0 1 ${x + rtl} ${y}
+                Z
+            `;
+
+            const boardFill = isDark ? "#334155" : "#e2e8f0"; 
+            const boardStroke = isDark ? "#475569" : "#cbd5e1"; 
+            const textFill = isDark ? "#94a3b8" : "#64748b"; 
 
             return (
-                <div className="w-full flex justify-center items-center h-48 bg-gray-50/50 rounded-lg border border-gray-200 overflow-hidden relative">
+                <div className="w-full h-48 bg-slate-50/50 dark:bg-slate-900/50 rounded-lg border border-gray-200 dark:border-slate-700 overflow-hidden relative flex justify-center items-center transition-colors">
+                    <span className="absolute top-2 left-2 text-[10px] text-slate-400 font-semibold uppercase tracking-wider z-10">Top View</span>
                     <svg viewBox="0 0 120 120" className="w-full h-full max-w-[200px] max-h-[200px]">
-                        {/* Base Board */}
-                        <rect x={x} y={y} width={scaledL} height={scaledW} fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                        <defs>
+                            <pattern id={`wood-grain-${length}-${width}`} width="100" height="20" patternUnits="userSpaceOnUse">
+                                <path d="M0,2 Q25,0 50,2 T100,2 M0,6 Q25,8 50,6 T100,6 M0,10 Q25,9 50,10 T100,10 M0,14 Q25,16 50,14 T100,14 M0,18 Q25,17 50,18 T100,18" fill="none" stroke="currentColor" strokeWidth="0.4" opacity="0.4" />
+                                <path d="M35,10 C 40,6 45,6 50,10 C 45,14 40,14 35,10 Z M38,10 C 41,8 44,8 47,10 C 44,12 41,12 38,10 Z" fill="none" stroke="currentColor" strokeWidth="0.3" opacity="0.5" />
+                            </pattern>
+                            <clipPath id={`board-clip-${clipId}`}>
+                                <path d={boardPathD} style={{ transition: 'd 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)' }} />
+                            </clipPath>
+                        </defs>
 
-                        {/* Edges - piešiami dinamiškai pagal masyvą */}
-                        {edgesArray.map(edgeData => {
-                            const isVisible = edgeData.idx < visibleCount;
-                            const [x1, y1, x2, y2] = edgeData.coords;
-                            return (
-                                <g key={edgeData.idx} className="transition-opacity duration-300 ease-in-out" style={{ opacity: isVisible ? 1 : 0 }}>
-                                    {/* Jei apvalinta, pridedame kiek storesnį baltą kontūrą.
-                                        Jis vizualiai "nupjauna" (nuimituoja frezą) po apačia esančios kitos briaunos aštrų kampą. */}
-                                    {edgeData.isRounded && (
-                                        <line 
-                                            x1={x1} y1={y1} x2={x2} y2={y2} 
-                                            stroke="#ffffff" 
-                                            strokeWidth={edgeData.strokeWidth + 4}
-                                            strokeLinecap="round"
+                        {/* Routed Assembly Container */}
+                        <g clipPath={`url(#board-clip-${clipId})`}>
+                            {/* Base Core Board */}
+                            <rect x={x} y={y} width={scaledL} height={scaledW} fill={boardFill} className="transition-colors" />
+                            {/* Core Wood Texture */}
+                            <rect x={x} y={y} width={scaledL} height={scaledW} fill={`url(#wood-grain-${length}-${width})`} className="text-slate-400 dark:text-slate-800 transition-colors pointer-events-none" />
+
+                            {/* Added PVC Edge Banding Strips & Flutes */}
+                            {edgesArray.map(edge => {
+                                const isVis = edge.idx < visibleCount;
+                                const bw = edge.strokeWidth;
+                                
+                                let bx = x, by = y, bwr = scaledL, bhr = scaledW;
+                                if (edge.side === 'top') { bhr = bw; }
+                                if (edge.side === 'bottom') { by = y + scaledW - bw; bhr = bw; }
+                                if (edge.side === 'left') { bwr = bw; }
+                                if (edge.side === 'right') { bx = x + scaledL - bw; bwr = bw; }
+
+                                // Fluting Visualization (Top View)
+                                const renderFlutes = () => {
+                                    if (!edge.isFluted || !isVis) return null;
+                                    const len = edge.side === 'top' || edge.side === 'bottom' ? bwr : bhr;
+                                    const actualInset = Math.min(8, len * 0.15); // Start/finish few mm from edge
+                                    const spacing = bw * 0.25;
+                                    const center = bw / 2;
+                                    
+                                    return [-1, 0, 1].map(i => {
+                                        const offset = center + (i * spacing);
+                                        let lx1, ly1, lx2, ly2;
+                                        if (edge.side === 'top' || edge.side === 'bottom') {
+                                            lx1 = bx + actualInset; lx2 = bx + bwr - actualInset;
+                                            ly1 = ly2 = by + offset;
+                                        } else {
+                                            lx1 = lx2 = bx + offset;
+                                            ly1 = by + actualInset; ly2 = by + bhr - actualInset;
+                                        }
+                                        return (
+                                            <line 
+                                                key={i} x1={lx1} y1={ly1} x2={lx2} y2={ly2} 
+                                                stroke={isDark ? "#0f172a" : "#78350f"} 
+                                                strokeWidth="0.6" 
+                                                opacity="0.5" 
+                                            />
+                                        );
+                                    });
+                                };
+
+                                return (
+                                    <g key={edge.idx} style={{ opacity: isVis ? 1 : 0, transition: 'opacity 0.4s ease-in-out' }}>
+                                        <rect 
+                                            x={bx} y={by} width={bwr} height={bhr} 
+                                            fill={edge.fill}
                                         />
-                                    )}
-                                    <line 
-                                        x1={x1} y1={y1} x2={x2} y2={y2} 
-                                        stroke={edgeData.color} 
-                                        strokeWidth={edgeData.strokeWidth}
-                                        strokeLinecap={edgeData.isRounded ? "round" : "square"} 
-                                    />
-                                </g>
-                            );
-                        })}
+                                        {renderFlutes()}
+                                    </g>
+                                );
+                            })}
+                        </g>
+
+                        {/* Sharp Overlay Outline */}
+                        <path 
+                            d={boardPathD} 
+                            fill="none" 
+                            stroke={boardStroke} 
+                            strokeWidth="1.2" 
+                            style={{ transition: 'd 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
+                            className="transition-colors pointer-events-none"
+                        />
                         
-                        {/* Dimensions Text inside SVG */}
-                        <text x="60" y="60" textAnchor="middle" dominantBaseline="middle" fill="#64748b" fontSize="8" fontWeight="bold" opacity="0.6">
+                        <text x="60" y="60" textAnchor="middle" dominantBaseline="middle" fill={textFill} fontSize="8" fontWeight="bold" opacity="0.6" className="transition-colors">
                             {length}x{width}
                         </text>
                     </svg>
 
-                    {/* Simple Axis Labels */}
-                    <div className="absolute top-1 right-2 text-[10px] text-gray-400 font-mono">L = {length}</div>
-                    <div className="absolute bottom-1 left-2 text-[10px] text-gray-400 font-mono" style={{writingMode: 'vertical-rl'}}>W = {width}</div>
+                    <div className="absolute top-1 right-2 text-[10px] text-slate-400 dark:text-slate-500 font-mono transition-colors">L = {length}</div>
+                    <div className="absolute bottom-1 left-2 text-[10px] text-slate-400 dark:text-slate-500 font-mono transition-colors" style={{writingMode: 'vertical-rl'}}>W = {width}</div>
                 </div>
             );
         };
 
         // 2. PartCard Component
-        const PartCard = ({ part, t }) => {
+        const PartCard = ({ part, t, isDark }) => {
             const steps = [
                 { seq: 1, val: part.edges.step1 },
                 { seq: 2, val: part.edges.step2 },
@@ -255,7 +335,6 @@
                 { seq: 4, val: part.edges.step4 }
             ].filter(s => s.val);
 
-            // 2 problema: Animacijos valdymas
             const maxSteps = steps.length;
             const [visibleCount, setVisibleCount] = useState(0);
 
@@ -263,19 +342,19 @@
                 if (maxSteps === 0) return;
                 const interval = setInterval(() => {
                     setVisibleCount(prev => (prev > maxSteps ? 0 : prev + 1));
-                }, 1200); // Kiekvienas žingsnis trunka 1.2s
+                }, 1600); // Slightly longer interval to appreciate the realistic morph animation
                 return () => clearInterval(interval);
             }, [maxSteps]);
 
             return (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow flex flex-col">
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700 overflow-hidden flex flex-col w-full transition-colors duration-200">
                     {/* Header */}
-                    <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-start gap-3">
+                    <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 flex justify-between items-start gap-3 transition-colors">
                         <div className="overflow-hidden">
-                            <h3 className="font-bold text-gray-900 text-lg truncate" title={part.name}>{part.name}</h3>
-                            <p className="text-xs text-gray-500 font-medium mt-0.5 truncate">{part.code} | {part.material}</p>
+                            <h3 className="font-bold text-gray-900 dark:text-white text-lg truncate transition-colors" title={part.name}>{part.name}</h3>
+                            <p className="text-xs text-gray-500 dark:text-slate-400 font-medium mt-0.5 truncate transition-colors">{part.code}</p>
                         </div>
-                        <span className="bg-slate-800 text-white text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap">
+                        <span className="bg-slate-800 dark:bg-slate-600 text-white dark:text-slate-100 text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap shadow-sm transition-colors">
                             {part.qty} {t.pcs}
                         </span>
                     </div>
@@ -284,27 +363,34 @@
                     <div className="p-5 flex-grow flex flex-col gap-4">
                         {/* Dimensions */}
                         <div className="flex gap-3">
-                            <div className="flex-1 bg-gray-50 p-2.5 rounded-lg border border-gray-100 text-center">
-                                <span className="block text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-1">{t.cutDims}</span>
-                                <span className="font-bold text-gray-800">{part.cutL}x{part.cutW}x{part.cutT}</span>
+                            <div className="flex-1 bg-slate-50 dark:bg-slate-700/50 p-2.5 rounded-lg border border-gray-100 dark:border-slate-600 text-center transition-colors">
+                                <span className="block text-[10px] text-gray-400 dark:text-slate-400 font-semibold uppercase tracking-wider mb-1 transition-colors">{t.cutDims}</span>
+                                <span className="font-bold text-gray-800 dark:text-slate-200 transition-colors">{part.cutL}x{part.cutW}x{part.cutT}</span>
                             </div>
-                            <div className="flex-1 bg-blue-50 p-2.5 rounded-lg border border-blue-100 text-center">
-                                <span className="block text-[10px] text-blue-400 font-semibold uppercase tracking-wider mb-1">{t.finalDims}</span>
-                                <span className="font-bold text-blue-800">{part.finalL}x{part.finalW}x{part.finalT}</span>
+                            <div className="flex-1 bg-blue-50 dark:bg-blue-900/30 p-2.5 rounded-lg border border-blue-100 dark:border-blue-800/50 text-center transition-colors">
+                                <span className="block text-[10px] text-blue-400 dark:text-blue-400/80 font-semibold uppercase tracking-wider mb-1 transition-colors">{t.finalDims}</span>
+                                <span className="font-bold text-blue-800 dark:text-blue-300 transition-colors">{part.finalL}x{part.finalW}x{part.finalT}</span>
                             </div>
                         </div>
 
-                        {/* 3 problema: Briaunavimo eiga stulpelyje + Animacija (Flat UI spalvos) */}
-                        <div className="bg-[#ecf0f1] p-3 rounded-lg border border-[#bdc3c7] flex-grow min-h-[120px]">
-                            <span className="block text-[10px] text-[#7f8c8d] font-semibold uppercase tracking-wider mb-2">{t.bandingSeq}</span>
+                        {/* Briaunavimo eiga stulpelyje + Animacija */}
+                        <div className="bg-[#ecf0f1] dark:bg-slate-700/40 p-3 rounded-lg border border-[#bdc3c7] dark:border-slate-600 flex-grow min-h-[120px] transition-colors">
+                            <span className="block text-[10px] text-[#7f8c8d] dark:text-slate-400 font-semibold uppercase tracking-wider mb-2 transition-colors">{t.bandingSeq}</span>
                             {steps.length > 0 ? (
                                 <ul className="space-y-1.5">
                                     {steps.map((s, idx) => {
                                         const isActive = idx < visibleCount;
                                         const isCurrent = idx === visibleCount - 1;
+                                        
+                                        // Dinaminės spalvų klasės priklausomai nuo temos
+                                        const textClass = isActive ? "text-slate-800 dark:text-slate-200" : "text-slate-400 dark:text-slate-500";
+                                        const dotClass = isActive 
+                                            ? (isCurrent ? "bg-flatBlue animate-pulse shadow-md shadow-flatBlue/50" : "bg-slate-800 dark:bg-slate-300") 
+                                            : "bg-slate-300 dark:bg-slate-600";
+
                                         return (
-                                            <li key={idx} className={`text-sm flex items-center gap-2 transition-all duration-300 ${isActive ? 'text-[#2c3e50]' : 'text-[#95a5a6]'}`}>
-                                                <span className={`w-2 h-2 rounded-full ${isActive ? (isCurrent ? 'bg-[#3498db] animate-pulse shadow-md shadow-[#3498db]/50' : 'bg-[#2c3e50]') : 'bg-[#bdc3c7]'}`}></span>
+                                            <li key={idx} className={`text-sm flex items-center gap-2 transition-all duration-300 ${textClass}`}>
+                                                <span className={`w-2 h-2 rounded-full transition-colors ${dotClass}`}></span>
                                                 <span className={isActive ? 'font-bold' : 'font-medium'}>{s.seq} {t.step}:</span> 
                                                 <span>{s.val}</span>
                                             </li>
@@ -312,25 +398,25 @@
                                     })}
                                 </ul>
                             ) : (
-                                <span className="text-sm font-semibold text-[#95a5a6]">-</span>
+                                <span className="text-sm font-semibold text-slate-400 dark:text-slate-500 transition-colors">-</span>
                             )}
                         </div>
                         
-                        {/* 2D Visualization with Animation Data */}
+                        {/* Visualization: Top View */}
                         <div className="mt-1">
-                            <Part2DView length={part.cutL} width={part.cutW} steps={steps} visibleCount={visibleCount} />
+                            <Part2DView length={part.cutL} width={part.cutW} steps={steps} visibleCount={visibleCount} isDark={isDark} clipId={part.id} />
                         </div>
 
-                        {/* Pastabų laukelis (rodomas tik jei yra pastaba) */}
+                        {/* Pastabų laukelis */}
                         {part.note && (
-                            <div className="mt-1 bg-amber-50 p-3 rounded-lg border border-amber-200">
+                            <div className="mt-1 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg border border-amber-200 dark:border-amber-800/50 transition-colors">
                                 <div className="flex items-center gap-1.5 mb-1">
-                                    <svg className="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                     </svg>
-                                    <span className="block text-[10px] text-amber-600 font-semibold uppercase tracking-wider">{t.notes}</span>
+                                    <span className="block text-[10px] text-amber-600 dark:text-amber-500 font-semibold uppercase tracking-wider transition-colors">{t.notes}</span>
                                 </div>
-                                <p className="text-sm text-amber-900 font-medium whitespace-pre-wrap">{part.note}</p>
+                                <p className="text-sm text-amber-900 dark:text-amber-200 font-medium whitespace-pre-wrap transition-colors">{part.note}</p>
                             </div>
                         )}
                     </div>
@@ -349,6 +435,41 @@
             const [isLoading, setIsLoading] = useState(true);
             const [selectedPart, setSelectedPart] = useState(null);
 
+            // Text Size State
+            const [fontSizeLevel, setFontSizeLevel] = useState(() => {
+                if (typeof window !== 'undefined') {
+                    return parseInt(localStorage.getItem('fontSizeLevel')) || 0;
+                }
+                return 0;
+            });
+
+            // Dark Mode State
+            const [isDark, setIsDark] = useState(() => {
+                if (typeof window !== 'undefined') {
+                    return localStorage.getItem('theme') === 'dark' || 
+                        (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                }
+                return false;
+            });
+
+            useEffect(() => {
+                const root = document.documentElement;
+                if (isDark) {
+                    root.classList.add('dark');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    root.classList.remove('dark');
+                    localStorage.setItem('theme', 'light');
+                }
+            }, [isDark]);
+
+            // Text Size Effect
+            useEffect(() => {
+                const sizes = ['100%', '110%', '125%'];
+                document.documentElement.style.fontSize = sizes[fontSizeLevel] || '100%';
+                localStorage.setItem('fontSizeLevel', fontSizeLevel);
+            }, [fontSizeLevel]);
+
             // Užrakiname fono slinkimą, kai atidarytas modalas
             useEffect(() => {
                 if (selectedPart) {
@@ -359,13 +480,12 @@
                 return () => { document.body.style.overflow = 'unset'; };
             }, [selectedPart]);
 
-            // Robust CSV Parser
+            // Saugus CSV Parseris
             const parseCSV = useCallback((text) => {
                 try {
                     const lines = text.split(/\r?\n/);
                     if (lines.length === 0) throw new Error(t.errEmpty);
 
-                    // Determine delimiter (comma or semicolon)
                     const firstLine = lines[0];
                     const delimiter = firstLine.includes(';') ? ';' : ',';
                     
@@ -375,7 +495,6 @@
                         const line = lines[i].trim();
                         if (!line) continue;
 
-                        // SAUGUS CSV išskyrimas (vietoj pavojingo RegEx). Neleidžia naršyklei užšalti.
                         let cols = [];
                         let curr = '';
                         let inQuotes = false;
@@ -392,7 +511,6 @@
                         cols.push(curr.trim());
                         cols = cols.map(c => c.replace(/^"|"$/g, '').trim());
                         
-                        // Patikriname, ar eilutė atrodo kaip duomenų eilutė (5 stulpelis turi būti skaičius, atspindintis ilgį)
                         if (cols.length >= 10 && !isNaN(parseFloat(cols[5]))) { 
                             const formatEdge = (type, len) => {
                                 if (!type || !len) return null;
@@ -401,7 +519,6 @@
                                 return (typeTrim !== '0' && lenTrim !== '0' && typeTrim !== '-') ? `${typeTrim} - ${lenTrim}` : null;
                             };
 
-                            // Saugus unikalaus ID generavimas (apsaugo nuo klaidų, jei 'crypto' objektas neprieinamas)
                             const safeId = (typeof crypto !== 'undefined' && crypto.randomUUID) 
                                 ? crypto.randomUUID() 
                                 : `item-${i}-${Date.now()}`;
@@ -414,10 +531,10 @@
                                 qty: parseInt(cols[4]) || 1,
                                 cutL: parseFloat(cols[5]) || 0,
                                 cutW: parseFloat(cols[6]) || 0,
-                                cutT: parseFloat(cols[7]) || 0,
+                                cutT: parseFloat(cols[7]) || 18,
                                 finalL: parseFloat(cols[8]) || 0,
                                 finalW: parseFloat(cols[9]) || 0,
-                                finalT: parseFloat(cols[10]) || 0,
+                                finalT: parseFloat(cols[10]) || 18,
                                 edges: {
                                     step1: formatEdge(cols[11], cols[12]),
                                     step2: formatEdge(cols[13], cols[14]),
@@ -441,7 +558,6 @@
                 }
             }, [t]);
 
-            // Fetch Data from Google Sheets CSV URL on Mount
             useEffect(() => {
                 const fetchOnlineCSV = async () => {
                     setIsLoading(true);
@@ -474,8 +590,6 @@
                 reader.onload = (e) => parseCSV(e.target.result);
                 reader.onerror = () => setError(t.errRead);
                 reader.readAsText(file);
-                
-                // Reset input
                 event.target.value = null;
             };
 
@@ -484,7 +598,6 @@
                 if (!searchLower) return parts;
                 
                 return parts.filter(p => {
-                    // Sukuriame bendrą eilutę paieškai, kad suveiktų ir tokios paieškos kaip "711x595", "711 x 595" ar atskiri skaičiai
                     const searchableString = `
                         ${p.code} ${p.name} ${p.material} 
                         ${p.cutL} ${p.cutW} ${p.cutT} 
@@ -500,39 +613,58 @@
             }, [parts, searchTerm]);
 
             return (
-                <div className="min-h-screen pb-12">
+                <div className="min-h-screen pb-12 transition-colors duration-200">
                     {/* Header bar */}
-                    <header className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+                    <header className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 sticky top-0 z-10 shadow-sm transition-colors duration-200">
                         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <svg className="w-8 h-8 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <svg className="w-8 h-8 text-blue-600 dark:text-flatBlue transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                                     <line x1="3" y1="9" x2="21" y2="9"></line>
                                     <line x1="9" y1="21" x2="9" y2="9"></line>
                                 </svg>
-                                <h1 className="text-xl font-bold text-gray-900 hidden sm:block">{t.title}</h1>
+                                <h1 className="text-xl font-bold text-gray-900 dark:text-white hidden sm:block transition-colors">{t.title}</h1>
                             </div>
                             
                             <div className="flex items-center gap-4 flex-1 justify-end">
                                 <div className="relative w-full max-w-xs hidden md:block">
-                                    <svg className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                    <svg className="w-4 h-4 text-gray-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                                     <input 
                                         type="text" 
                                         placeholder={t.search}
-                                        className="w-full pl-9 pr-4 py-1.5 text-sm border border-gray-300 rounded-md bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                        className="w-full pl-9 pr-4 py-1.5 text-sm border border-gray-300 dark:border-slate-600 rounded-md bg-gray-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-blue-500 dark:focus:ring-flatBlue focus:border-blue-500 outline-none text-slate-900 dark:text-white transition-colors"
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                     />
                                 </div>
                                 
-                                {/* Desktop Language Flags */}
-                                <div className="hidden sm:flex items-center gap-2 border-r border-gray-200 pr-4 mr-1">
+                                {/* Desktop Flags & Theme Toggle */}
+                                <div className="hidden sm:flex items-center gap-3 border-r border-gray-200 dark:border-slate-700 pr-4 mr-1 transition-colors">
+                                    <button 
+                                        onClick={() => setFontSizeLevel((prev) => (prev + 1) % 3)}
+                                        className="w-8 h-8 flex items-center justify-center rounded-full text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors font-bold select-none"
+                                        title={t.textSizeToggle}
+                                    >
+                                        <span className="text-sm leading-none">A</span><span className="text-[10px] leading-none align-top">+</span>
+                                    </button>
+                                    <button 
+                                        onClick={() => setIsDark(!isDark)}
+                                        className="p-1.5 rounded-full text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                                        title={t.themeToggle}
+                                    >
+                                        {isDark ? (
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                                        ) : (
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                                        )}
+                                    </button>
+                                    <div className="w-px h-5 bg-gray-200 dark:bg-slate-700 mx-1"></div>
                                     <button onClick={() => setLang('lt')} className={`text-xl transition-all duration-200 hover:scale-110 ${lang === 'lt' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`} title="Lietuvių">🇱🇹</button>
                                     <button onClick={() => setLang('en')} className={`text-xl transition-all duration-200 hover:scale-110 ${lang === 'en' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`} title="English">🇬🇧</button>
                                     <button onClick={() => setLang('uk')} className={`text-xl transition-all duration-200 hover:scale-110 ${lang === 'uk' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`} title="Українська">🇺🇦</button>
                                 </div>
 
-                                <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white py-1.5 px-4 rounded-md shadow-sm transition-colors text-sm font-medium flex items-center gap-2">
+                                <label className="cursor-pointer bg-blue-600 dark:bg-flatBlue hover:bg-blue-700 dark:hover:bg-blue-500 text-white py-1.5 px-4 rounded-md shadow-sm transition-colors text-sm font-medium flex items-center gap-2">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
                                     <span className="hidden sm:inline">{t.uploadDesktop}</span>
                                     <span className="sm:hidden">{t.uploadMobile}</span>
@@ -540,20 +672,39 @@
                                 </label>
                             </div>
                         </div>
-                        {/* Mobile Search and Flags */}
+                        {/* Mobile Search and Tools */}
                         <div className="md:hidden px-4 pb-3 flex items-center gap-3">
                              <div className="relative w-full">
-                                <svg className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                <svg className="w-4 h-4 text-gray-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                                 <input 
                                     type="text" 
                                     placeholder={t.search}
-                                    className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-md bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                                    className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-md bg-gray-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-blue-500 dark:focus:ring-flatBlue outline-none text-slate-900 dark:text-white transition-colors"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                             </div>
-                            {/* Mobile Language Flags */}
-                            <div className="flex sm:hidden items-center gap-2 shrink-0">
+                            
+                            <button 
+                                onClick={() => setFontSizeLevel((prev) => (prev + 1) % 3)}
+                                className="w-9 h-9 flex items-center justify-center rounded-full text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shrink-0 font-bold select-none"
+                                title={t.textSizeToggle}
+                            >
+                                <span className="text-sm leading-none">A</span><span className="text-[10px] leading-none align-top">+</span>
+                            </button>
+
+                            <button 
+                                onClick={() => setIsDark(!isDark)}
+                                className="p-2 rounded-full text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors shrink-0"
+                            >
+                                {isDark ? (
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                                ) : (
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                                )}
+                            </button>
+
+                            <div className="flex items-center gap-2 shrink-0">
                                 <button onClick={() => setLang('lt')} className={`text-xl transition-all duration-200 ${lang === 'lt' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale'}`}>🇱🇹</button>
                                 <button onClick={() => setLang('en')} className={`text-xl transition-all duration-200 ${lang === 'en' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale'}`}>🇬🇧</button>
                                 <button onClick={() => setLang('uk')} className={`text-xl transition-all duration-200 ${lang === 'uk' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale'}`}>🇺🇦</button>
@@ -562,67 +713,65 @@
                     </header>
 
                     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
-                        {/* Status/Error Messages */}
                         {error && (
-                            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-center gap-3">
+                            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 text-red-700 dark:text-red-400 rounded-lg flex items-center gap-3 transition-colors">
                                 <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                 <p className="text-sm font-medium">{error}</p>
-                                <button onClick={() => setError(null)} className="ml-auto text-red-500 hover:text-red-800">✕</button>
+                                <button onClick={() => setError(null)} className="ml-auto text-red-500 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300">✕</button>
                             </div>
                         )}
 
                         <div className="mb-6 flex justify-between items-end">
                             <div>
-                                <h2 className="text-2xl font-bold text-gray-900">{t.listTitle}</h2>
-                                <p className="text-sm text-gray-500 mt-1">
+                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white transition-colors">{t.listTitle}</h2>
+                                <p className="text-sm text-gray-500 dark:text-slate-400 mt-1 transition-colors">
                                     {isLoading ? t.fetching : t.showing(filteredParts.length, parts.length)}
                                 </p>
                             </div>
                         </div>
 
-                        {/* Parts Grid or Loading State */}
                         {isLoading ? (
-                            <div className="text-center py-20 bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col items-center">
-                                <svg className="animate-spin h-8 w-8 text-blue-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <div className="text-center py-20 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm flex flex-col items-center transition-colors">
+                                <svg className="animate-spin h-8 w-8 text-blue-600 dark:text-flatBlue mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
-                                <h3 className="text-base font-semibold text-gray-900">{t.loading}</h3>
-                                <p className="mt-1 text-sm text-gray-500 max-w-sm mx-auto">{t.connecting}</p>
+                                <h3 className="text-base font-semibold text-gray-900 dark:text-white transition-colors">{t.loading}</h3>
+                                <p className="mt-1 text-sm text-gray-500 dark:text-slate-400 max-w-sm mx-auto transition-colors">{t.connecting}</p>
                             </div>
                         ) : filteredParts.length === 0 ? (
-                            <div className="text-center py-20 bg-white rounded-xl border border-gray-200 shadow-sm">
-                                <div className="mx-auto w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
-                                    <svg className="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <div className="text-center py-20 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm transition-colors">
+                                <div className="mx-auto w-16 h-16 bg-gray-50 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4 transition-colors">
+                                    <svg className="h-8 w-8 text-gray-400 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                 </div>
-                                <h3 className="text-base font-semibold text-gray-900">{t.noPartsTitle}</h3>
-                                <p className="mt-1 text-sm text-gray-500 max-w-sm mx-auto">{t.noPartsDesc}</p>
+                                <h3 className="text-base font-semibold text-gray-900 dark:text-white transition-colors">{t.noPartsTitle}</h3>
+                                <p className="mt-1 text-sm text-gray-500 dark:text-slate-400 max-w-sm mx-auto transition-colors">{t.noPartsDesc}</p>
                             </div>
                         ) : (
-                            <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
+                            <div className="bg-white dark:bg-slate-800 shadow-sm border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden transition-colors">
                                 {/* Desktop Lentelė */}
                                 <div className="hidden md:block overflow-x-auto">
-                                    <table className="min-w-full divide-y divide-gray-200 text-sm">
-                                        <thead className="bg-gray-50">
+                                    <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700 transition-colors">
+                                        <thead className="bg-gray-50 dark:bg-slate-900/50 transition-colors">
                                             <tr>
-                                                <th className="px-6 py-3 text-left font-semibold text-gray-500 uppercase tracking-wider">{t.name}</th>
-                                                <th className="px-6 py-3 text-left font-semibold text-gray-500 uppercase tracking-wider">{t.cutting} (L x W x T)</th>
-                                                <th className="px-6 py-3 text-left font-semibold text-gray-500 uppercase tracking-wider">{t.final} (L x W x T)</th>
-                                                <th className="px-6 py-3 text-right font-semibold text-gray-500 uppercase tracking-wider">{t.collection}</th>
+                                                <th className="px-6 py-3 text-left font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">{t.name}</th>
+                                                <th className="px-6 py-3 text-left font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">{t.cutting} (L x W x T)</th>
+                                                <th className="px-6 py-3 text-left font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">{t.final} (L x W x T)</th>
+                                                <th className="px-6 py-3 text-right font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">{t.collection}</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-gray-200">
+                                        <tbody className="divide-y divide-gray-200 dark:divide-slate-700 transition-colors">
                                             {filteredParts.map(part => (
-                                                <tr key={part.id} onClick={() => setSelectedPart(part)} className="hover:bg-blue-50 cursor-pointer transition-colors group">
-                                                    <td className="px-6 py-4 whitespace-nowrap text-gray-900 font-bold">{part.name}</td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-gray-600 font-mono text-xs">
+                                                <tr key={part.id} onClick={() => setSelectedPart(part)} className="hover:bg-blue-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors group">
+                                                    <td className="px-6 py-4 whitespace-nowrap text-gray-900 dark:text-white font-bold">{part.name}</td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-gray-600 dark:text-slate-300 font-mono text-xs">
                                                         {part.cutL} x {part.cutW} x {part.cutT}
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-blue-600 font-mono text-xs font-semibold">
+                                                    <td className="px-6 py-4 whitespace-nowrap text-blue-600 dark:text-blue-400 font-mono text-xs font-semibold">
                                                         {part.finalL} x {part.finalW} x {part.finalT}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-right">
-                                                        <span className="bg-slate-800 text-white text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap shadow-sm">
+                                                        <span className="bg-slate-800 dark:bg-slate-600 text-white dark:text-slate-100 text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap shadow-sm transition-colors">
                                                             {part.code}
                                                         </span>
                                                     </td>
@@ -633,23 +782,23 @@
                                 </div>
 
                                 {/* Mobile Sąrašas */}
-                                <div className="md:hidden divide-y divide-gray-100">
+                                <div className="md:hidden divide-y divide-gray-100 dark:divide-slate-700 transition-colors">
                                     {filteredParts.map(part => (
-                                        <div key={part.id} onClick={() => setSelectedPart(part)} className="p-4 hover:bg-blue-50 active:bg-blue-100 cursor-pointer transition-colors flex flex-col gap-2">
+                                        <div key={part.id} onClick={() => setSelectedPart(part)} className="p-4 hover:bg-blue-50 dark:hover:bg-slate-700/50 active:bg-blue-100 dark:active:bg-slate-600 cursor-pointer transition-colors flex flex-col gap-2">
                                             <div className="flex justify-between items-start gap-2">
-                                                <span className="text-sm font-bold text-gray-900">{part.name}</span>
-                                                <span className="bg-slate-800 text-white text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 shadow-sm">
+                                                <span className="text-sm font-bold text-gray-900 dark:text-white transition-colors">{part.name}</span>
+                                                <span className="bg-slate-800 dark:bg-slate-600 text-white text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 shadow-sm transition-colors">
                                                     {part.code}
                                                 </span>
                                             </div>
                                             <div className="flex gap-6 text-xs font-mono mt-0.5">
                                                 <div className="flex flex-col">
-                                                    <span className="text-gray-400 text-[9px] uppercase mb-0.5">{t.cutting}</span>
-                                                    <span className="text-gray-600">{part.cutL} x {part.cutW} x {part.cutT}</span>
+                                                    <span className="text-gray-400 dark:text-slate-500 text-[9px] uppercase mb-0.5 transition-colors">{t.cutting}</span>
+                                                    <span className="text-gray-600 dark:text-slate-300 transition-colors">{part.cutL} x {part.cutW} x {part.cutT}</span>
                                                 </div>
                                                 <div className="flex flex-col">
-                                                    <span className="text-blue-400 text-[9px] uppercase mb-0.5">{t.final}</span>
-                                                    <span className="text-blue-600 font-semibold">{part.finalL} x {part.finalW} x {part.finalT}</span>
+                                                    <span className="text-blue-400 dark:text-blue-500 text-[9px] uppercase mb-0.5 transition-colors">{t.final}</span>
+                                                    <span className="text-blue-600 dark:text-blue-400 font-semibold transition-colors">{part.finalL} x {part.finalW} x {part.finalT}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -662,18 +811,16 @@
                     {/* Modalas su Detalės Kortele */}
                     {selectedPart && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-                            {/* Fono patamsinimas */}
                             <div 
-                                className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" 
+                                className="absolute inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm transition-colors" 
                                 onClick={() => setSelectedPart(null)}
                             ></div>
                             
-                            {/* Kortelės konteineris */}
-                            <div className="relative w-full max-w-lg z-10 flex flex-col animate-fade-in-up">
+                            <div className="relative w-full max-w-2xl z-10 flex flex-col animate-fade-in-up">
                                 <div className="flex justify-end mb-3">
                                     <button 
                                         onClick={() => setSelectedPart(null)} 
-                                        className="text-white bg-black/40 hover:bg-black/60 rounded-full p-2 backdrop-blur-md transition-colors"
+                                        className="text-white bg-black/40 hover:bg-black/60 dark:bg-white/20 dark:hover:bg-white/30 rounded-full p-2 backdrop-blur-md transition-colors"
                                         title={t.close}
                                     >
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -681,8 +828,8 @@
                                         </svg>
                                     </button>
                                 </div>
-                                <div className="max-h-[85vh] overflow-y-auto rounded-xl bg-white shadow-2xl">
-                                    <PartCard part={selectedPart} t={t} />
+                                <div className="max-h-[85vh] overflow-y-auto rounded-xl">
+                                    <PartCard part={selectedPart} t={t} isDark={isDark} />
                                 </div>
                             </div>
                         </div>
@@ -691,7 +838,6 @@
             );
         };
 
-        // Render Application
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
