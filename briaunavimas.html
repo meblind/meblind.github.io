@@ -168,6 +168,7 @@
                 
                 const isThin = val.includes('0.4');
                 const strokeWidth = isThin ? 2.5 : 6; 
+                
                 // Color representing the PVC banding strips (like in the visualizer)
                 const fill = isThin 
                     ? (isDark ? "#475569" : "#E5C19E") 
@@ -297,7 +298,7 @@
                                     <g key={edge.idx} style={{ opacity: isVis ? 1 : 0, transition: 'opacity 0.4s ease-in-out' }}>
                                         <rect 
                                             x={bx} y={by} width={bwr} height={bhr} 
-                                            fill={edge.fill}
+                                            fill={edge.fill} 
                                         />
                                         {renderFlutes()}
                                     </g>
@@ -559,8 +560,23 @@
             }, [t]);
 
             useEffect(() => {
+                let isMounted = true;
+                const CACHE_KEY = 'cached_parts_csv';
+
                 const fetchOnlineCSV = async () => {
-                    setIsLoading(true);
+                    // 1. Load from Local Cache (localStorage) first
+                    const localData = localStorage.getItem(CACHE_KEY);
+                    
+                    if (localData) {
+                        if (isMounted) {
+                            parseCSV(localData);
+                            setIsLoading(false); // Instantly removes the loader
+                        }
+                    } else {
+                        if (isMounted) setIsLoading(true);
+                    }
+
+                    // 2. Fetch from Remote in the background
                     try {
                         const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQSHJJdOhsNzRuq-WmcCS1SFCUqvRlYFYU9I9rs1LL9zlJ8AQWzwB3l_1PY67wbnHxhTDTi5VrC1jRq/pub?gid=1947074840&single=true&output=csv";
                         const response = await fetch(url);
@@ -569,17 +585,33 @@
                             throw new Error(`Klaida gaunant duomenis: ${response.statusText}`);
                         }
 
-                        const text = await response.text();
-                        parseCSV(text);
+                        const remoteText = await response.text();
+                        
+                        // 3. Compare Remote with Local Cache and update if changed
+                        if (remoteText !== localData) {
+                            localStorage.setItem(CACHE_KEY, remoteText);
+                            if (isMounted) {
+                                parseCSV(remoteText);
+                            }
+                        }
                     } catch (err) {
                         console.error("CSV Fetch Error:", err);
-                        setError(translations[lang].errFetch);
+                        // Only show error if we also didn't have cached data to fall back on
+                        if (!localData && isMounted) {
+                            setError(translations[lang].errFetch);
+                        }
                     } finally {
-                        setIsLoading(false);
+                        if (isMounted) {
+                            setIsLoading(false);
+                        }
                     }
                 };
 
                 fetchOnlineCSV();
+
+                return () => {
+                    isMounted = false;
+                };
             }, [parseCSV, lang]);
 
             const handleFileUpload = (event) => {
@@ -673,8 +705,8 @@
                             </div>
                         </div>
                         {/* Mobile Search and Tools */}
-                        <div className="md:hidden px-4 pb-3 flex items-center gap-3">
-                             <div className="relative w-full">
+                        <div className="md:hidden px-4 pb-3 flex items-center gap-3"> 
+                            <div className="relative w-full">
                                 <svg className="w-4 h-4 text-gray-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                                 <input 
                                     type="text" 
@@ -812,14 +844,14 @@
                     {selectedPart && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
                             <div 
-                                className="absolute inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm transition-colors" 
+                                className="absolute inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm transition-colors"
                                 onClick={() => setSelectedPart(null)}
                             ></div>
                             
                             <div className="relative w-full max-w-2xl z-10 flex flex-col animate-fade-in-up">
                                 <div className="flex justify-end mb-3">
                                     <button 
-                                        onClick={() => setSelectedPart(null)} 
+                                        onClick={() => setSelectedPart(null)}
                                         className="text-white bg-black/40 hover:bg-black/60 dark:bg-white/20 dark:hover:bg-white/30 rounded-full p-2 backdrop-blur-md transition-colors"
                                         title={t.close}
                                     >
