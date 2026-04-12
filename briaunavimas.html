@@ -13,8 +13,10 @@
             theme: {
                 extend: {
                     colors: {
-                        flatBlue: '#3498db',
-                        flatRed: '#e74c3c'
+                        brandBg: '#d9e8e8',
+                        brandBlue: '#264A68',
+                        brandHover: '#203b53',
+                        brandRed: '#ef3b46'
                     }
                 }
             }
@@ -25,155 +27,170 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
-    <!-- Babel for JSX compilation in the browser -->
+    <!-- Babel for JSX compilation -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+    <!-- PapaParse for high-performance CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
     <style>
-        body {
-            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        }
-        /* Custom scrollbar for a cleaner look */
+        body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         html.dark ::-webkit-scrollbar-thumb { background: #475569; }
         html.dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        
+        /* Modal & UI Animations */
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fade-in 0.25s ease-out forwards;
+        }
+
+        /* Print Fallbacks */
+        @media print {
+            body, html { background-color: white !important; }
+            #root { background-color: white !important; }
+        }
     </style>
 </head>
-<body class="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 transition-colors duration-200">
+<body class="bg-brandBg text-slate-800 transition-colors duration-200 print:bg-white print:text-black">
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo, useCallback } = React;
+        const { useState, useEffect, useMemo, useCallback, memo, useRef } = React;
 
-        const translations = {
-            lt: {
-                title: "Briaunavimas",
-                search: "Ieškoti (pavadinimas, kodas, matmenys)...",
-                uploadDesktop: "Įkelti CSV",
-                uploadMobile: "Įkelti",
-                loading: "Kraunami duomenys...",
-                connecting: "Jungiamasi prie Google Sheets",
-                noPartsTitle: "Nerasta jokių detalių",
-                noPartsDesc: "Pabandykite pakeisti paieškos kriterijus arba įkelkite tinkamo formato CSV failą.",
-                listTitle: "Detalių sąrašas",
-                showing: (x, y) => `Rodoma ${x} iš ${y} detalių`,
-                fetching: "Siunčiami duomenys...",
-                collection: "Kolekcija",
-                name: "Pavadinimas",
-                cutting: "Pjovimas",
-                final: "Galutinis",
-                pcs: "vnt.",
-                cutDims: "Pjovimo matmenys",
-                finalDims: "Galutiniai matmenys",
-                bandingSeq: "Briaunavimo eiga",
-                step: "žingsnis",
-                close: "Uždaryti",
-                errEmpty: "Failas tuščias.",
-                errParse: "Nepavyko nuskaityti duomenų. Patikrinkite CSV formatą.",
-                errRead: "Įvyko klaida skaitant failą.",
-                errFetch: "Nepavyko gauti duomenų iš interneto nuorodos. Rodomi pavyzdiniai duomenys.",
-                notes: "Pastabos",
-                themeToggle: "Keisti temą",
-                textSizeToggle: "Keisti teksto dydį"
+        // --- ASYNC INDEXED-DB WRAPPER ---
+        const idb = {
+            dbPromise: new Promise((resolve, reject) => {
+                const req = indexedDB.open('EdgeBandingCache', 1);
+                req.onupgradeneeded = e => e.target.result.createObjectStore('csvStore');
+                req.onsuccess = e => resolve(e.target.result);
+                req.onerror = e => reject(e.target.error);
+            }),
+            async get(key) {
+                const db = await this.dbPromise;
+                return new Promise((res, rej) => {
+                    const req = db.transaction('csvStore', 'readonly').objectStore('csvStore').get(key);
+                    req.onsuccess = () => res(req.result);
+                    req.onerror = () => rej(req.error);
+                });
             },
-            en: {
-                title: "Edge Banding",
-                search: "Search (name, code, dimensions)...",
-                uploadDesktop: "Upload CSV",
-                uploadMobile: "Upload",
-                loading: "Loading data...",
-                connecting: "Connecting to Google Sheets",
-                noPartsTitle: "No parts found",
-                noPartsDesc: "Try changing the search criteria or upload a valid CSV file.",
-                listTitle: "Parts List",
-                showing: (x, y) => `Showing ${x} of ${y} parts`,
-                fetching: "Fetching data...",
-                collection: "Collection",
-                name: "Name",
-                cutting: "Cutting",
-                final: "Final",
-                pcs: "pcs.",
-                cutDims: "Cutting dimensions",
-                finalDims: "Final dimensions",
-                bandingSeq: "Edge banding sequence",
-                step: "step",
-                close: "Close",
-                errEmpty: "File is empty.",
-                errParse: "Failed to parse data. Please check CSV format.",
-                errRead: "Error reading file.",
-                errFetch: "Failed to fetch data from the internet. Showing sample data.",
-                notes: "Notes",
-                themeToggle: "Toggle theme",
-                textSizeToggle: "Change text size"
-            },
-            uk: {
-                title: "Кромкування",
-                search: "Пошук (назва, код, розміри)...",
-                uploadDesktop: "Завантажити CSV",
-                uploadMobile: "Завантаж.",
-                loading: "Завантаження даних...",
-                connecting: "Підключення до Google Sheets",
-                noPartsTitle: "Деталей не знайдено",
-                noPartsDesc: "Спробуйте змінити критерії пошуку або завантажте дійсний файл CSV.",
-                listTitle: "Список деталей",
-                showing: (x, y) => `Показано ${x} з ${y} деталей`,
-                fetching: "Отримання даних...",
-                collection: "Колекція",
-                name: "Назва",
-                cutting: "Порізка",
-                final: "Кінцевий",
-                pcs: "шт.",
-                cutDims: "Розміри порізки",
-                finalDims: "Кінцеві розміри",
-                bandingSeq: "Послідовність кромкування",
-                step: "крок",
-                close: "Закрити",
-                errEmpty: "Файл порожній.",
-                errParse: "Не вдалося прочитати дані. Перевірте формат CSV.",
-                errRead: "Помилка читання файлу.",
-                errFetch: "Не вдалося отримати дані з Інтернету. Показано зразки даних.",
-                notes: "Примітки",
-                themeToggle: "Змінити тему",
-                textSizeToggle: "Змінити розмір тексту"
+            async set(key, val) {
+                const db = await this.dbPromise;
+                return new Promise((res, rej) => {
+                    const req = db.transaction('csvStore', 'readwrite').objectStore('csvStore').put(val, key);
+                    req.onsuccess = () => res();
+                    req.onerror = () => rej(req.error);
+                });
             }
         };
 
-        // --- MOCK DATA ---
+        // --- CUSTOM HOOKS ---
+        
+        function useDebounce(value, delay) {
+            const [debouncedValue, setDebouncedValue] = useState(value);
+            useEffect(() => {
+                const handler = setTimeout(() => setDebouncedValue(value), delay);
+                return () => clearTimeout(handler);
+            }, [value, delay]);
+            return debouncedValue;
+        }
+
+        function useFocusTrap(ref, isActive) {
+            useEffect(() => {
+                if (!isActive || !ref.current) return;
+                const focusableElements = ref.current.querySelectorAll(
+                    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+                );
+                if (focusableElements.length === 0) return;
+                
+                const firstElement = focusableElements[0];
+                const lastElement = focusableElements[focusableElements.length - 1];
+
+                const handleTab = (e) => {
+                    if (e.key !== 'Tab') return;
+                    if (e.shiftKey) {
+                        if (document.activeElement === firstElement) {
+                            lastElement.focus();
+                            e.preventDefault();
+                        }
+                    } else {
+                        if (document.activeElement === lastElement) {
+                            firstElement.focus();
+                            e.preventDefault();
+                        }
+                    }
+                };
+                window.addEventListener('keydown', handleTab);
+                setTimeout(() => firstElement?.focus(), 50); 
+                return () => window.removeEventListener('keydown', handleTab);
+            }, [isActive, ref]);
+        }
+
+        const translations = {
+            lt: { title: "Briaunavimas", search: "Ieškoti (pavadinimas, kodas, matmenys)...", uploadDesktop: "Įkelti CSV", uploadMobile: "Įkelti", loading: "Apdorojama...", noPartsTitle: "Nerasta jokių detalių", noPartsDesc: "Pabandykite pakeisti paieškos kriterijus arba įkelkite tinkamo formato CSV failą.", listTitle: "Detalių sąrašas", showing: (x, y) => `Rodoma ${x} iš ${y} detalių`, collection: "Kolekcija", name: "Pavadinimas", cutting: "Pjovimas", final: "Galutinis", pcs: "vnt.", cutDims: "Pjovimo matmenys", finalDims: "Galutiniai matmenys", bandingSeq: "Briaunavimo eiga", step: "žingsnis", close: "Uždaryti", errEmpty: "Failas tuščias.", errParse: "Nepavyko nuskaityti duomenų. Patikrinkite CSV formatą.", errRead: "Įvyko klaida skaitant failą.", errFetch: "Nepavyko gauti duomenų iš interneto. Rodomi pavyzdiniai duomenys.", notes: "Pastabos", totalParts: "Viso detalių:", totalPcs: "Viso vienetų:", print: "Spausdinti" },
+            en: { title: "Edge Banding", search: "Search (name, code, dimensions)...", uploadDesktop: "Upload CSV", uploadMobile: "Upload", loading: "Processing...", noPartsTitle: "No parts found", noPartsDesc: "Try changing the search criteria or upload a valid CSV file.", listTitle: "Parts List", showing: (x, y) => `Showing ${x} of ${y} parts`, collection: "Collection", name: "Name", cutting: "Cutting", final: "Final", pcs: "pcs.", cutDims: "Cutting dimensions", finalDims: "Final dimensions", bandingSeq: "Edge banding sequence", step: "step", close: "Close", errEmpty: "File is empty.", errParse: "Failed to parse data. Please check CSV format.", errRead: "Error reading file.", errFetch: "Failed to fetch data from the internet. Showing sample data.", notes: "Notes", totalParts: "Total Parts:", totalPcs: "Total Pcs:", print: "Print" },
+            uk: { title: "Кромкування", search: "Пошук (назва, код, розміри)...", uploadDesktop: "Завантажити CSV", uploadMobile: "Завантаж.", loading: "Обробка...", noPartsTitle: "Деталей не знайдено", noPartsDesc: "Спробуйте змінити критерії пошуку або завантажте дійсний файл CSV.", listTitle: "Список деталей", showing: (x, y) => `Показано ${x} з ${y} деталей`, collection: "Колекція", name: "Назва", cutting: "Порізка", final: "Кінцевий", pcs: "шт.", cutDims: "Розміри порізки", finalDims: "Кінцеві розміри", bandingSeq: "Послідовність кромкування", step: "крок", close: "Закрити", errEmpty: "Файл порожній.", errParse: "Не вдалося прочитати дані. Перевірте формат CSV.", errRead: "Помилка читання файлу.", errFetch: "Не вдалося отримати дані з Інтернету. Показано зразки даних.", notes: "Примітки", totalParts: "Всього деталей:", totalPcs: "Всього шт.:", print: "Друк" }
+        };
+
         const defaultParts = [
             { id: '1', code: 'S1-03', name: '24 End Panel LR', material: 'S1-02-51', qty: 1, cutL: 711, cutW: 595, cutT: 18, finalL: 713, finalW: 599, finalT: 18, edges: { step1: '0.4mm - 595', step2: '3mm - 711', step3: '3mm - 711 F', step4: '3mm - 595 A F' }, note: 'Dėmesio: atkreipti dėmesį į tekstūros kryptį frezuojant!' }
         ];
 
         // --- COMPONENTS ---
 
-        // 1. Part2DView Component (Top-down view)
-        const Part2DView = ({ length, width, steps, visibleCount, isDark, clipId }) => {
+        const SkeletonGrid = memo(() => (
+            <div className="bg-white p-2 rounded-md border border-slate-200 shadow-sm overflow-hidden animate-pulse">
+                <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-3 border-b border-slate-200">
+                    <div className="col-span-4 h-4 bg-slate-200 rounded w-1/3"></div>
+                    <div className="col-span-3 h-4 bg-slate-200 rounded w-1/2"></div>
+                    <div className="col-span-3 h-4 bg-slate-200 rounded w-1/2"></div>
+                    <div className="col-span-2 h-4 bg-slate-200 rounded w-2/3 ml-auto"></div>
+                </div>
+                {[...Array(6)].map((_, i) => (
+                    <div key={i} className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 px-4 py-4 md:py-3 border-b border-slate-100 items-center">
+                        <div className="md:col-span-4 flex justify-between md:block">
+                            <div className="h-5 bg-slate-200 rounded w-2/3"></div>
+                            <div className="h-5 bg-slate-200 rounded-full w-16 md:hidden"></div>
+                        </div>
+                        <div className="md:col-span-3 flex flex-col md:block gap-1">
+                            <div className="h-3 bg-slate-200 rounded w-12 md:hidden"></div>
+                            <div className="h-4 bg-slate-200 rounded w-24"></div>
+                        </div>
+                        <div className="md:col-span-3 flex flex-col md:block gap-1">
+                            <div className="h-3 bg-slate-200 rounded w-12 md:hidden"></div>
+                            <div className="h-4 bg-slate-200 rounded w-24"></div>
+                        </div>
+                        <div className="hidden md:flex md:col-span-2 justify-end">
+                            <div className="h-6 bg-slate-200 rounded-full w-16"></div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        ));
+
+        const Part2DView = memo(({ length, width, steps, visibleCount, clipId }) => {
             const maxDim = Math.max(length, width) || 1;
             const scale = 100 / maxDim; 
-            
             const scaledL = length * scale;
             const scaledW = width * scale;
-            
             const x = (120 - scaledL) / 2;
             const y = (120 - scaledW) / 2;
 
             const mappedEdges = { top: null, bottom: null, left: null, right: null };
-            
             const matchLPattern = new RegExp('(^|\\D)' + length + '(\\D|$)');
             const matchWPattern = new RegExp('(^|\\D)' + width + '(\\D|$)');
 
             steps.forEach((step, idx) => {
                 const { val } = step;
-                
                 const isThin = val.includes('0.4');
                 const strokeWidth = isThin ? 2.5 : 6; 
-                
-                // Color representing the PVC banding strips (like in the visualizer)
-                const fill = isThin 
-                    ? (isDark ? "#475569" : "#E5C19E") 
-                    : (isDark ? "#64748b" : "#D4A373");
-                
+                const fill = isThin ? "#E5C19E" : "#D4A373";
                 const isRounded = val.toUpperCase().includes('A');
                 const isFluted = val.toUpperCase().includes('F');
 
@@ -182,248 +199,188 @@
                 const matchW = matchWPattern.test(val);
 
                 if (matchL && !matchW) {
-                    if (!mappedEdges.top) side = 'top';
-                    else if (!mappedEdges.bottom) side = 'bottom';
+                    if (!mappedEdges.top) side = 'top'; else if (!mappedEdges.bottom) side = 'bottom';
                 } else if (matchW && !matchL) {
-                    if (!mappedEdges.left) side = 'left';
-                    else if (!mappedEdges.right) side = 'right';
+                    if (!mappedEdges.left) side = 'left'; else if (!mappedEdges.right) side = 'right';
                 } else {
-                    if (!mappedEdges.top) side = 'top';
-                    else if (!mappedEdges.bottom) side = 'bottom';
-                    else if (!mappedEdges.left) side = 'left';
-                    else if (!mappedEdges.right) side = 'right';
+                    if (!mappedEdges.top) side = 'top'; else if (!mappedEdges.bottom) side = 'bottom';
+                    else if (!mappedEdges.left) side = 'left'; else if (!mappedEdges.right) side = 'right';
                 }
-                
                 if (side) mappedEdges[side] = { ...step, idx, fill, strokeWidth, isRounded, isFluted, side };
             });
 
-            // Sort so they stack accurately in the sequence they are applied
-            const edgesArray = Object.values(mappedEdges).filter(Boolean);
-            edgesArray.sort((a, b) => a.idx - b.idx);
-
-            // Determine corner rounding radii (mimicking a corner rounding unit)
-            const R = 8; // Visual representation of the corner cut
-            const eps = 0.01; // Tiny epsilon to preserve SVG structure for CSS morphing
+            const edgesArray = Object.values(mappedEdges).filter(Boolean).sort((a, b) => a.idx - b.idx);
+            const R = 8, eps = 0.01; 
             let rtl = eps, rtr = eps, rbl = eps, rbr = eps;
 
             const isActive = (side) => mappedEdges[side] && mappedEdges[side].idx < visibleCount;
             const isRounded = (side) => isActive(side) && mappedEdges[side].isRounded;
 
-            // A corner gets rounded if either of its adjacent banded edges goes through the rounding process
             if (isRounded('top') || isRounded('left')) rtl = R;
             if (isRounded('top') || isRounded('right')) rtr = R;
             if (isRounded('bottom') || isRounded('right')) rbr = R;
             if (isRounded('bottom') || isRounded('left')) rbl = R;
 
-            // Master clip path representing the final machined shape of the board
-            const boardPathD = `
-                M ${x + rtl} ${y}
-                L ${x + scaledL - rtr} ${y}
-                A ${rtr} ${rtr} 0 0 1 ${x + scaledL} ${y + rtr}
-                L ${x + scaledL} ${y + scaledW - rbr}
-                A ${rbr} ${rbr} 0 0 1 ${x + scaledL - rbr} ${y + scaledW}
-                L ${x + rbl} ${y + scaledW}
-                A ${rbl} ${rbl} 0 0 1 ${x} ${y + scaledW - rbl}
-                L ${x} ${y + rtl}
-                A ${rtl} ${rtl} 0 0 1 ${x + rtl} ${y}
-                Z
-            `;
-
-            const boardFill = isDark ? "#334155" : "#e2e8f0"; 
-            const boardStroke = isDark ? "#475569" : "#cbd5e1"; 
-            const textFill = isDark ? "#94a3b8" : "#64748b"; 
+            const boardPathD = `M ${x + rtl} ${y} L ${x + scaledL - rtr} ${y} A ${rtr} ${rtr} 0 0 1 ${x + scaledL} ${y + rtr} L ${x + scaledL} ${y + scaledW - rbr} A ${rbr} ${rbr} 0 0 1 ${x + scaledL - rbr} ${y + scaledW} L ${x + rbl} ${y + scaledW} A ${rbl} ${rbl} 0 0 1 ${x} ${y + scaledW - rbl} L ${x} ${y + rtl} A ${rtl} ${rtl} 0 0 1 ${x + rtl} ${y} Z`;
 
             return (
-                <div className="w-full h-48 bg-slate-50/50 dark:bg-slate-900/50 rounded-lg border border-gray-200 dark:border-slate-700 overflow-hidden relative flex justify-center items-center transition-colors">
+                <div className="w-full h-48 bg-slate-50 rounded-md border border-slate-200 overflow-hidden relative flex justify-center items-center transition-colors">
                     <span className="absolute top-2 left-2 text-[10px] text-slate-400 font-semibold uppercase tracking-wider z-10">Top View</span>
                     <svg viewBox="0 0 120 120" className="w-full h-full max-w-[200px] max-h-[200px]">
                         <defs>
-                            <pattern id={`wood-grain-${length}-${width}`} width="100" height="20" patternUnits="userSpaceOnUse">
-                                <path d="M0,2 Q25,0 50,2 T100,2 M0,6 Q25,8 50,6 T100,6 M0,10 Q25,9 50,10 T100,10 M0,14 Q25,16 50,14 T100,14 M0,18 Q25,17 50,18 T100,18" fill="none" stroke="currentColor" strokeWidth="0.4" opacity="0.4" />
-                                <path d="M35,10 C 40,6 45,6 50,10 C 45,14 40,14 35,10 Z M38,10 C 41,8 44,8 47,10 C 44,12 41,12 38,10 Z" fill="none" stroke="currentColor" strokeWidth="0.3" opacity="0.5" />
+                            <pattern id={`wood-grain-${clipId}`} width="100" height="20" patternUnits="userSpaceOnUse">
+                                <path d="M0,2 Q25,0 50,2 T100,2 M0,6 Q25,8 50,6 T100,6 M0,10 Q25,9 50,10 T100,10" fill="none" stroke="currentColor" strokeWidth="0.4" opacity="0.4" />
                             </pattern>
                             <clipPath id={`board-clip-${clipId}`}>
                                 <path d={boardPathD} style={{ transition: 'd 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)' }} />
                             </clipPath>
                         </defs>
-
-                        {/* Routed Assembly Container */}
                         <g clipPath={`url(#board-clip-${clipId})`}>
-                            {/* Base Core Board */}
-                            <rect x={x} y={y} width={scaledL} height={scaledW} fill={boardFill} className="transition-colors" />
-                            {/* Core Wood Texture */}
-                            <rect x={x} y={y} width={scaledL} height={scaledW} fill={`url(#wood-grain-${length}-${width})`} className="text-slate-400 dark:text-slate-800 transition-colors pointer-events-none" />
-
-                            {/* Added PVC Edge Banding Strips & Flutes */}
+                            <rect x={x} y={y} width={scaledL} height={scaledW} fill="#e2e8f0" />
+                            <rect x={x} y={y} width={scaledL} height={scaledW} fill={`url(#wood-grain-${clipId})`} className="text-slate-400 pointer-events-none" />
                             {edgesArray.map(edge => {
                                 const isVis = edge.idx < visibleCount;
                                 const bw = edge.strokeWidth;
-                                
                                 let bx = x, by = y, bwr = scaledL, bhr = scaledW;
                                 if (edge.side === 'top') { bhr = bw; }
                                 if (edge.side === 'bottom') { by = y + scaledW - bw; bhr = bw; }
                                 if (edge.side === 'left') { bwr = bw; }
                                 if (edge.side === 'right') { bx = x + scaledL - bw; bwr = bw; }
 
-                                // Fluting Visualization (Top View)
-                                const renderFlutes = () => {
-                                    if (!edge.isFluted || !isVis) return null;
-                                    const len = edge.side === 'top' || edge.side === 'bottom' ? bwr : bhr;
-                                    const actualInset = Math.min(8, len * 0.15); // Start/finish few mm from edge
-                                    const spacing = bw * 0.25;
-                                    const center = bw / 2;
-                                    
-                                    return [-1, 0, 1].map(i => {
-                                        const offset = center + (i * spacing);
-                                        let lx1, ly1, lx2, ly2;
-                                        if (edge.side === 'top' || edge.side === 'bottom') {
-                                            lx1 = bx + actualInset; lx2 = bx + bwr - actualInset;
-                                            ly1 = ly2 = by + offset;
-                                        } else {
-                                            lx1 = lx2 = bx + offset;
-                                            ly1 = by + actualInset; ly2 = by + bhr - actualInset;
-                                        }
-                                        return (
-                                            <line 
-                                                key={i} x1={lx1} y1={ly1} x2={lx2} y2={ly2} 
-                                                stroke={isDark ? "#0f172a" : "#78350f"} 
-                                                strokeWidth="0.6" 
-                                                opacity="0.5" 
-                                            />
-                                        );
-                                    });
-                                };
-
                                 return (
                                     <g key={edge.idx} style={{ opacity: isVis ? 1 : 0, transition: 'opacity 0.4s ease-in-out' }}>
-                                        <rect 
-                                            x={bx} y={by} width={bwr} height={bhr} 
-                                            fill={edge.fill} 
-                                        />
-                                        {renderFlutes()}
+                                        <rect x={bx} y={by} width={bwr} height={bhr} fill={edge.fill} />
                                     </g>
                                 );
                             })}
                         </g>
-
-                        {/* Sharp Overlay Outline */}
-                        <path 
-                            d={boardPathD} 
-                            fill="none" 
-                            stroke={boardStroke} 
-                            strokeWidth="1.2" 
-                            style={{ transition: 'd 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
-                            className="transition-colors pointer-events-none"
-                        />
-                        
-                        <text x="60" y="60" textAnchor="middle" dominantBaseline="middle" fill={textFill} fontSize="8" fontWeight="bold" opacity="0.6" className="transition-colors">
-                            {length}x{width}
-                        </text>
+                        <path d={boardPathD} fill="none" stroke="#cbd5e1" strokeWidth="1.2" style={{ transition: 'd 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)' }} className="pointer-events-none" />
+                        <text x="60" y="60" textAnchor="middle" dominantBaseline="middle" fill="#64748b" fontSize="8" fontWeight="bold" opacity="0.6">{length}x{width}</text>
                     </svg>
-
-                    <div className="absolute top-1 right-2 text-[10px] text-slate-400 dark:text-slate-500 font-mono transition-colors">L = {length}</div>
-                    <div className="absolute bottom-1 left-2 text-[10px] text-slate-400 dark:text-slate-500 font-mono transition-colors" style={{writingMode: 'vertical-rl'}}>W = {width}</div>
+                    <div className="absolute top-1 right-2 text-[10px] text-slate-400 font-mono">L = {length}</div>
+                    <div className="absolute bottom-1 left-2 text-[10px] text-slate-400 font-mono" style={{writingMode: 'vertical-rl'}}>W = {width}</div>
                 </div>
             );
-        };
+        });
 
-        // 2. PartCard Component
-        const PartCard = ({ part, t, isDark }) => {
+        const PartCard = ({ part, t, onClose }) => {
             const steps = [
-                { seq: 1, val: part.edges.step1 },
-                { seq: 2, val: part.edges.step2 },
-                { seq: 3, val: part.edges.step3 },
-                { seq: 4, val: part.edges.step4 }
+                { seq: 1, val: part.edges.step1 }, { seq: 2, val: part.edges.step2 },
+                { seq: 3, val: part.edges.step3 }, { seq: 4, val: part.edges.step4 }
             ].filter(s => s.val);
 
-            const maxSteps = steps.length;
             const [visibleCount, setVisibleCount] = useState(0);
+            const modalRef = useRef(null);
+            
+            useFocusTrap(modalRef, true);
 
             useEffect(() => {
-                if (maxSteps === 0) return;
+                if (steps.length === 0) return;
                 const interval = setInterval(() => {
-                    setVisibleCount(prev => (prev > maxSteps ? 0 : prev + 1));
-                }, 1600); // Slightly longer interval to appreciate the realistic morph animation
+                    setVisibleCount(prev => (prev > steps.length ? 0 : prev + 1));
+                }, 1600);
                 return () => clearInterval(interval);
-            }, [maxSteps]);
+            }, [steps.length]);
 
             return (
-                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700 overflow-hidden flex flex-col w-full transition-colors duration-200">
-                    {/* Header */}
-                    <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 flex justify-between items-start gap-3 transition-colors">
+                <div ref={modalRef} className="bg-white rounded-md border border-slate-200 shadow-xl overflow-hidden flex flex-col w-full animate-fade-in">
+                    <div className="px-5 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-start gap-3">
                         <div className="overflow-hidden">
-                            <h3 className="font-bold text-gray-900 dark:text-white text-lg truncate transition-colors" title={part.name}>{part.name}</h3>
-                            <p className="text-xs text-gray-500 dark:text-slate-400 font-medium mt-0.5 truncate transition-colors">{part.code}</p>
+                            <h3 className="font-bold text-brandBlue text-lg truncate" title={part.name}>{part.name}</h3>
+                            <p className="text-xs text-slate-500 font-medium mt-0.5 truncate">{part.code}</p>
                         </div>
-                        <span className="bg-slate-800 dark:bg-slate-600 text-white dark:text-slate-100 text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap shadow-sm transition-colors">
-                            {part.qty} {t.pcs}
-                        </span>
+                        <div className="flex items-center gap-2">
+                            <span className="bg-slate-100 text-slate-800 border border-slate-200 text-xs font-bold px-2.5 py-1 rounded-md whitespace-nowrap shadow-sm">{part.qty} {t.pcs}</span>
+                            <button onClick={onClose} className="md:hidden text-slate-400 hover:text-brandRed p-1 transition-colors" aria-label={t.close}>
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
                     </div>
                     
-                    {/* Body */}
                     <div className="p-5 flex-grow flex flex-col gap-4">
-                        {/* Dimensions */}
                         <div className="flex gap-3">
-                            <div className="flex-1 bg-slate-50 dark:bg-slate-700/50 p-2.5 rounded-lg border border-gray-100 dark:border-slate-600 text-center transition-colors">
-                                <span className="block text-[10px] text-gray-400 dark:text-slate-400 font-semibold uppercase tracking-wider mb-1 transition-colors">{t.cutDims}</span>
-                                <span className="font-bold text-gray-800 dark:text-slate-200 transition-colors">{part.cutL}x{part.cutW}x{part.cutT}</span>
+                            <div className="flex-1 bg-white p-2.5 rounded-md border border-slate-200 text-center shadow-sm">
+                                <span className="block text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-1">{t.cutDims}</span>
+                                <span className="font-bold text-slate-800">{part.cutL}x{part.cutW}x{part.cutT}</span>
                             </div>
-                            <div className="flex-1 bg-blue-50 dark:bg-blue-900/30 p-2.5 rounded-lg border border-blue-100 dark:border-blue-800/50 text-center transition-colors">
-                                <span className="block text-[10px] text-blue-400 dark:text-blue-400/80 font-semibold uppercase tracking-wider mb-1 transition-colors">{t.finalDims}</span>
-                                <span className="font-bold text-blue-800 dark:text-blue-300 transition-colors">{part.finalL}x{part.finalW}x{part.finalT}</span>
+                            <div className="flex-1 bg-slate-50 p-2.5 rounded-md border border-slate-200 text-center shadow-sm">
+                                <span className="block text-[10px] text-brandBlue font-semibold uppercase tracking-wider mb-1">{t.finalDims}</span>
+                                <span className="font-bold text-brandBlue">{part.finalL}x{part.finalW}x{part.finalT}</span>
                             </div>
                         </div>
 
-                        {/* Briaunavimo eiga stulpelyje + Animacija */}
-                        <div className="bg-[#ecf0f1] dark:bg-slate-700/40 p-3 rounded-lg border border-[#bdc3c7] dark:border-slate-600 flex-grow min-h-[120px] transition-colors">
-                            <span className="block text-[10px] text-[#7f8c8d] dark:text-slate-400 font-semibold uppercase tracking-wider mb-2 transition-colors">{t.bandingSeq}</span>
+                        <div className="bg-slate-50 p-3 rounded-md border border-slate-200 flex-grow min-h-[120px]">
+                            <span className="block text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-2">{t.bandingSeq}</span>
                             {steps.length > 0 ? (
                                 <ul className="space-y-1.5">
                                     {steps.map((s, idx) => {
                                         const isActive = idx < visibleCount;
                                         const isCurrent = idx === visibleCount - 1;
-                                        
-                                        // Dinaminės spalvų klasės priklausomai nuo temos
-                                        const textClass = isActive ? "text-slate-800 dark:text-slate-200" : "text-slate-400 dark:text-slate-500";
-                                        const dotClass = isActive 
-                                            ? (isCurrent ? "bg-flatBlue animate-pulse shadow-md shadow-flatBlue/50" : "bg-slate-800 dark:bg-slate-300") 
-                                            : "bg-slate-300 dark:bg-slate-600";
-
+                                        const textClass = isActive ? "text-slate-800" : "text-slate-400";
+                                        const dotClass = isActive ? (isCurrent ? "bg-brandBlue animate-pulse shadow-sm shadow-brandBlue/50" : "bg-slate-400") : "bg-slate-200";
                                         return (
                                             <li key={idx} className={`text-sm flex items-center gap-2 transition-all duration-300 ${textClass}`}>
-                                                <span className={`w-2 h-2 rounded-full transition-colors ${dotClass}`}></span>
+                                                <span className={`w-2 h-2 rounded-full ${dotClass}`}></span>
                                                 <span className={isActive ? 'font-bold' : 'font-medium'}>{s.seq} {t.step}:</span> 
                                                 <span>{s.val}</span>
                                             </li>
                                         );
                                     })}
                                 </ul>
-                            ) : (
-                                <span className="text-sm font-semibold text-slate-400 dark:text-slate-500 transition-colors">-</span>
-                            )}
+                            ) : (<span className="text-sm font-semibold text-slate-400">-</span>)}
                         </div>
                         
-                        {/* Visualization: Top View */}
                         <div className="mt-1">
-                            <Part2DView length={part.cutL} width={part.cutW} steps={steps} visibleCount={visibleCount} isDark={isDark} clipId={part.id} />
+                            <Part2DView length={part.cutL} width={part.cutW} steps={steps} visibleCount={visibleCount} clipId={part.id} />
                         </div>
 
-                        {/* Pastabų laukelis */}
                         {part.note && (
-                            <div className="mt-1 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg border border-amber-200 dark:border-amber-800/50 transition-colors">
+                            <div className="mt-1 bg-red-50 p-3 rounded-md border border-red-100">
                                 <div className="flex items-center gap-1.5 mb-1">
-                                    <svg className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                    <span className="block text-[10px] text-amber-600 dark:text-amber-500 font-semibold uppercase tracking-wider transition-colors">{t.notes}</span>
+                                    <svg className="w-3.5 h-3.5 text-brandRed" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    <span className="block text-[10px] text-brandRed font-semibold uppercase tracking-wider">{t.notes}</span>
                                 </div>
-                                <p className="text-sm text-amber-900 dark:text-amber-200 font-medium whitespace-pre-wrap transition-colors">{part.note}</p>
+                                <p className="text-sm text-slate-800 font-medium whitespace-pre-wrap">{part.note}</p>
                             </div>
                         )}
+                        <div className="mt-2 text-center">
+                            <button onClick={onClose} className="w-full py-2 bg-brandBlue hover:bg-brandHover hover:scale-[1.02] shadow-sm text-white rounded-md transition-all font-semibold text-sm">
+                                {t.close}
+                            </button>
+                        </div>
                     </div>
                 </div>
             );
         };
+
+        const GridRow = memo(({ part, onClick }) => (
+            <div onClick={() => onClick(part)} tabIndex="0" onKeyDown={(e) => e.key === 'Enter' && onClick(part)} 
+                 className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-4 px-4 py-4 md:py-3 items-center border-b border-slate-100 last:border-0 hover:bg-slate-50 focus:bg-slate-50 focus:ring-1 focus:ring-inset focus:ring-brandBlue outline-none cursor-pointer transition-colors print:border-b-black print:border-dashed print:py-2 print:gap-1">
+                
+                {/* Mobile top info / Desktop col-1 */}
+                <div className="md:col-span-4 flex justify-between items-start md:block">
+                    <span className="text-sm md:text-base font-bold text-slate-800 print:text-black">{part.name}</span>
+                    <span className="md:hidden bg-slate-100 text-slate-800 border border-slate-200 text-[10px] font-bold px-2 py-0.5 rounded-md print:bg-transparent print:border-none print:p-0 print:text-black">{part.code}</span>
+                </div>
+
+                {/* Mobile dimensions wrap / Desktop cols */}
+                <div className="flex gap-6 md:contents text-xs md:text-sm font-mono mt-1 md:mt-0">
+                    <div className="md:col-span-3 flex flex-col md:block">
+                        <span className="md:hidden text-slate-400 text-[9px] uppercase mb-0.5 print:hidden">Cutting</span>
+                        <span className="text-slate-600 print:text-black">{part.cutL} x {part.cutW} x {part.cutT}</span>
+                    </div>
+                    <div className="md:col-span-3 flex flex-col md:block">
+                        <span className="md:hidden text-brandBlue text-[9px] uppercase mb-0.5 print:hidden">Final</span>
+                        <span className="text-brandBlue font-semibold print:text-black">{part.finalL} x {part.finalW} x {part.finalT}</span>
+                    </div>
+                </div>
+                
+                {/* Desktop badge */}
+                <div className="hidden md:flex md:col-span-2 justify-end">
+                    <span className="bg-slate-100 text-slate-800 border border-slate-200 text-xs font-bold px-2.5 py-1 rounded-md shadow-sm print:shadow-none print:bg-transparent print:border-none print:p-0 print:text-black">{part.code}</span>
+                </div>
+            </div>
+        ));
 
         // 3. Main App Component
         const App = () => {
@@ -431,272 +388,194 @@
             const t = translations[lang];
 
             const [searchTerm, setSearchTerm] = useState('');
+            const debouncedSearchTerm = useDebounce(searchTerm, 300);
+
             const [parts, setParts] = useState(defaultParts);
             const [error, setError] = useState(null);
             const [isLoading, setIsLoading] = useState(true);
             const [selectedPart, setSelectedPart] = useState(null);
+            
+            const [renderLimit, setRenderLimit] = useState(50);
+            const loaderRef = useRef(null);
 
-            // Text Size State
-            const [fontSizeLevel, setFontSizeLevel] = useState(() => {
-                if (typeof window !== 'undefined') {
-                    return parseInt(localStorage.getItem('fontSizeLevel')) || 0;
-                }
-                return 0;
-            });
-
-            // Dark Mode State
-            const [isDark, setIsDark] = useState(() => {
-                if (typeof window !== 'undefined') {
-                    return localStorage.getItem('theme') === 'dark' || 
-                        (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
-                }
-                return false;
-            });
-
-            useEffect(() => {
-                const root = document.documentElement;
-                if (isDark) {
-                    root.classList.add('dark');
-                    localStorage.setItem('theme', 'dark');
-                } else {
-                    root.classList.remove('dark');
-                    localStorage.setItem('theme', 'light');
-                }
-            }, [isDark]);
-
-            // Text Size Effect
-            useEffect(() => {
-                const sizes = ['100%', '110%', '125%'];
-                document.documentElement.style.fontSize = sizes[fontSizeLevel] || '100%';
-                localStorage.setItem('fontSizeLevel', fontSizeLevel);
-            }, [fontSizeLevel]);
-
-            // Užrakiname fono slinkimą, kai atidarytas modalas
             useEffect(() => {
                 if (selectedPart) {
                     document.body.style.overflow = 'hidden';
-                } else {
-                    document.body.style.overflow = 'unset';
+                    const handleEsc = (e) => { if (e.key === 'Escape') setSelectedPart(null); };
+                    window.addEventListener('keydown', handleEsc);
+                    return () => {
+                        document.body.style.overflow = 'unset';
+                        window.removeEventListener('keydown', handleEsc);
+                    };
                 }
-                return () => { document.body.style.overflow = 'unset'; };
             }, [selectedPart]);
 
-            // Saugus CSV Parseris
             const parseCSV = useCallback((text) => {
-                try {
-                    const lines = text.split(/\r?\n/);
-                    if (lines.length === 0) throw new Error(t.errEmpty);
+                Papa.parse(text, {
+                    header: false,
+                    skipEmptyLines: true,
+                    complete: (results) => {
+                        try {
+                            if (!results.data || results.data.length === 0) throw new Error(t.errEmpty);
+                            
+                            const newParts = [];
+                            results.data.forEach((cols, i) => {
+                                if (cols.length < 10 || isNaN(parseFloat(cols[5]))) return;
 
-                    const firstLine = lines[0];
-                    const delimiter = firstLine.includes(';') ? ';' : ',';
-                    
-                    const newParts = [];
-                    
-                    for (let i = 0; i < lines.length; i++) {
-                        const line = lines[i].trim();
-                        if (!line) continue;
+                                const formatEdge = (type, len) => {
+                                    if (!type || !len) return null;
+                                    const tStr = type.trim(), lStr = len.trim();
+                                    return (tStr !== '0' && lStr !== '0' && tStr !== '-') ? `${tStr} - ${lStr}` : null;
+                                };
 
-                        let cols = [];
-                        let curr = '';
-                        let inQuotes = false;
-                        for (let j = 0; j < line.length; j++) {
-                            if (line[j] === '"') {
-                                inQuotes = !inQuotes;
-                            } else if (line[j] === delimiter && !inQuotes) {
-                                cols.push(curr.trim());
-                                curr = '';
-                            } else {
-                                curr += line[j];
-                            }
-                        }
-                        cols.push(curr.trim());
-                        cols = cols.map(c => c.replace(/^"|"$/g, '').trim());
-                        
-                        if (cols.length >= 10 && !isNaN(parseFloat(cols[5]))) { 
-                            const formatEdge = (type, len) => {
-                                if (!type || !len) return null;
-                                const typeTrim = type.trim();
-                                const lenTrim = len.trim();
-                                return (typeTrim !== '0' && lenTrim !== '0' && typeTrim !== '-') ? `${typeTrim} - ${lenTrim}` : null;
-                            };
-
-                            const safeId = (typeof crypto !== 'undefined' && crypto.randomUUID) 
-                                ? crypto.randomUUID() 
-                                : `item-${i}-${Date.now()}`;
-
-                            newParts.push({
-                                id: safeId,
-                                code: cols[1] || '-',
-                                name: cols[2] || `Detalė ${i}`,
-                                material: cols[3] || 'Nenurodyta',
-                                qty: parseInt(cols[4]) || 1,
-                                cutL: parseFloat(cols[5]) || 0,
-                                cutW: parseFloat(cols[6]) || 0,
-                                cutT: parseFloat(cols[7]) || 18,
-                                finalL: parseFloat(cols[8]) || 0,
-                                finalW: parseFloat(cols[9]) || 0,
-                                finalT: parseFloat(cols[10]) || 18,
-                                edges: {
-                                    step1: formatEdge(cols[11], cols[12]),
-                                    step2: formatEdge(cols[13], cols[14]),
-                                    step3: formatEdge(cols[15], cols[16]),
-                                    step4: formatEdge(cols[17], cols[18])
-                                },
-                                note: cols[19] ? cols[19].replace(/^"|"$/g, '').trim() : ''
+                                newParts.push({
+                                    id: `item-${i}-${Date.now()}`,
+                                    code: cols[1] || '-',
+                                    name: cols[2] || `Detalė ${i}`,
+                                    material: cols[3] || 'Nenurodyta',
+                                    qty: parseInt(cols[4]) || 1,
+                                    cutL: parseFloat(cols[5]) || 0,
+                                    cutW: parseFloat(cols[6]) || 0,
+                                    cutT: parseFloat(cols[7]) || 18,
+                                    finalL: parseFloat(cols[8]) || 0,
+                                    finalW: parseFloat(cols[9]) || 0,
+                                    finalT: parseFloat(cols[10]) || 18,
+                                    edges: {
+                                        step1: formatEdge(cols[11], cols[12]),
+                                        step2: formatEdge(cols[13], cols[14]),
+                                        step3: formatEdge(cols[15], cols[16]),
+                                        step4: formatEdge(cols[17], cols[18])
+                                    },
+                                    note: cols[19] ? cols[19].trim() : ''
+                                });
                             });
-                        }
-                    }
 
-                    if (newParts.length > 0) {
-                        setParts(newParts);
-                        setError(null);
-                    } else {
+                            if (newParts.length > 0) {
+                                setParts(newParts);
+                                setError(null);
+                            } else {
+                                setError(t.errParse);
+                            }
+                        } catch (err) {
+                            setError(t.errRead);
+                            console.error(err);
+                        }
+                    },
+                    error: (err) => {
                         setError(t.errParse);
+                        console.error("PapaParse Error:", err);
                     }
-                } catch (err) {
-                    setError(t.errRead);
-                    console.error(err);
-                }
+                });
             }, [t]);
 
             useEffect(() => {
                 let isMounted = true;
-                const CACHE_KEY = 'cached_parts_csv';
+                const CACHE_KEY = 'cached_parts_csv_v4';
 
                 const fetchOnlineCSV = async () => {
-                    // 1. Load from Local Cache (localStorage) first
-                    const localData = localStorage.getItem(CACHE_KEY);
-                    
-                    if (localData) {
-                        if (isMounted) {
-                            parseCSV(localData);
-                            setIsLoading(false); // Instantly removes the loader
-                        }
-                    } else {
-                        if (isMounted) setIsLoading(true);
-                    }
-
-                    // 2. Fetch from Remote in the background
                     try {
+                        const localData = await idb.get(CACHE_KEY);
+                        if (localData && isMounted) {
+                            parseCSV(localData);
+                            setIsLoading(false);
+                        } else if (isMounted) {
+                            setIsLoading(true);
+                        }
+
                         const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQSHJJdOhsNzRuq-WmcCS1SFCUqvRlYFYU9I9rs1LL9zlJ8AQWzwB3l_1PY67wbnHxhTDTi5VrC1jRq/pub?gid=1947074840&single=true&output=csv";
                         const response = await fetch(url);
+                        if (!response.ok) throw new Error(response.statusText);
                         
-                        if (!response.ok) {
-                            throw new Error(`Klaida gaunant duomenis: ${response.statusText}`);
-                        }
-
                         const remoteText = await response.text();
                         
-                        // 3. Compare Remote with Local Cache and update if changed
                         if (remoteText !== localData) {
-                            localStorage.setItem(CACHE_KEY, remoteText);
-                            if (isMounted) {
-                                parseCSV(remoteText);
-                            }
+                            await idb.set(CACHE_KEY, remoteText);
+                            if (isMounted) parseCSV(remoteText);
                         }
                     } catch (err) {
-                        console.error("CSV Fetch Error:", err);
-                        // Only show error if we also didn't have cached data to fall back on
-                        if (!localData && isMounted) {
-                            setError(translations[lang].errFetch);
-                        }
+                        console.error("Fetch Error:", err);
+                        if (isMounted && isLoading) setError(translations[lang].errFetch);
                     } finally {
-                        if (isMounted) {
-                            setIsLoading(false);
-                        }
+                        if (isMounted) setIsLoading(false);
                     }
                 };
 
                 fetchOnlineCSV();
-
-                return () => {
-                    isMounted = false;
-                };
+                return () => { isMounted = false; };
             }, [parseCSV, lang]);
 
             const handleFileUpload = (event) => {
                 const file = event.target.files[0];
                 if (!file) return;
-
+                setIsLoading(true);
                 const reader = new FileReader();
-                reader.onload = (e) => parseCSV(e.target.result);
-                reader.onerror = () => setError(t.errRead);
+                reader.onload = (e) => {
+                    parseCSV(e.target.result);
+                    setIsLoading(false);
+                };
+                reader.onerror = () => {
+                    setError(t.errRead);
+                    setIsLoading(false);
+                };
                 reader.readAsText(file);
                 event.target.value = null;
             };
 
             const filteredParts = useMemo(() => {
-                const searchLower = searchTerm.toLowerCase().trim();
+                const searchLower = debouncedSearchTerm.toLowerCase().trim();
                 if (!searchLower) return parts;
                 
                 return parts.filter(p => {
-                    const searchableString = `
-                        ${p.code} ${p.name} ${p.material} 
-                        ${p.cutL} ${p.cutW} ${p.cutT} 
-                        ${p.cutL}x${p.cutW}x${p.cutT} 
-                        ${p.cutL} x ${p.cutW} x ${p.cutT} 
-                        ${p.finalL} ${p.finalW} ${p.finalT}
-                        ${p.finalL}x${p.finalW}x${p.finalT}
-                        ${p.finalL} x ${p.finalW} x ${p.finalT}
-                    `.toLowerCase();
-                    
-                    return searchableString.includes(searchLower);
+                    const str = `${p.code} ${p.name} ${p.material} ${p.cutL} ${p.cutW} ${p.cutT} ${p.cutL}x${p.cutW}x${p.cutT} ${p.finalL} ${p.finalW} ${p.finalT} ${p.finalL}x${p.finalW}x${p.finalT}`.toLowerCase();
+                    return str.includes(searchLower);
                 });
-            }, [parts, searchTerm]);
+            }, [parts, debouncedSearchTerm]);
+
+            const totalParts = filteredParts.length;
+            const totalQty = filteredParts.reduce((sum, p) => sum + (p.qty || 1), 0);
+
+            useEffect(() => { setRenderLimit(50); }, [debouncedSearchTerm]);
+
+            const visibleParts = useMemo(() => filteredParts.slice(0, renderLimit), [filteredParts, renderLimit]);
+
+            useEffect(() => {
+                if (isLoading || visibleParts.length >= filteredParts.length) return;
+                const observer = new IntersectionObserver(
+                    (entries) => { if (entries[0].isIntersecting) setRenderLimit(prev => prev + 50); },
+                    { rootMargin: '200px' }
+                );
+                if (loaderRef.current) observer.observe(loaderRef.current);
+                return () => observer.disconnect();
+            }, [isLoading, visibleParts.length, filteredParts.length]);
 
             return (
                 <div className="min-h-screen pb-12 transition-colors duration-200">
-                    {/* Header bar */}
-                    <header className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 sticky top-0 z-10 shadow-sm transition-colors duration-200">
-                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                    {/* Top Main Navigation (White/Slate) */}
+                    <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm print:hidden">
+                        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <svg className="w-8 h-8 text-blue-600 dark:text-flatBlue transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                    <line x1="3" y1="9" x2="21" y2="9"></line>
-                                    <line x1="9" y1="21" x2="9" y2="9"></line>
-                                </svg>
-                                <h1 className="text-xl font-bold text-gray-900 dark:text-white hidden sm:block transition-colors">{t.title}</h1>
+                                <svg className="w-7 h-7 text-brandBlue" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                                <h1 className="text-xl font-bold text-brandBlue hidden sm:block">{t.title}</h1>
                             </div>
                             
                             <div className="flex items-center gap-4 flex-1 justify-end">
                                 <div className="relative w-full max-w-xs hidden md:block">
-                                    <svg className="w-4 h-4 text-gray-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                                    <input 
-                                        type="text" 
-                                        placeholder={t.search}
-                                        className="w-full pl-9 pr-4 py-1.5 text-sm border border-gray-300 dark:border-slate-600 rounded-md bg-gray-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-blue-500 dark:focus:ring-flatBlue focus:border-blue-500 outline-none text-slate-900 dark:text-white transition-colors"
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                    />
+                                    <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                    <input type="text" placeholder={t.search} className="w-full pl-9 pr-4 py-1.5 text-sm border border-slate-300 rounded-md bg-white focus:bg-white focus:ring-2 focus:ring-brandBlue focus:border-brandBlue outline-none text-slate-800 transition-colors shadow-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                                 </div>
                                 
-                                {/* Desktop Flags & Theme Toggle */}
-                                <div className="hidden sm:flex items-center gap-3 border-r border-gray-200 dark:border-slate-700 pr-4 mr-1 transition-colors">
-                                    <button 
-                                        onClick={() => setFontSizeLevel((prev) => (prev + 1) % 3)}
-                                        className="w-8 h-8 flex items-center justify-center rounded-full text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors font-bold select-none"
-                                        title={t.textSizeToggle}
-                                    >
-                                        <span className="text-sm leading-none">A</span><span className="text-[10px] leading-none align-top">+</span>
-                                    </button>
-                                    <button 
-                                        onClick={() => setIsDark(!isDark)}
-                                        className="p-1.5 rounded-full text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                                        title={t.themeToggle}
-                                    >
-                                        {isDark ? (
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                                        ) : (
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
-                                        )}
-                                    </button>
-                                    <div className="w-px h-5 bg-gray-200 dark:bg-slate-700 mx-1"></div>
+                                <div className="hidden sm:flex items-center gap-2 border-r border-slate-200 pr-4 mr-1">
                                     <button onClick={() => setLang('lt')} className={`text-xl transition-all duration-200 hover:scale-110 ${lang === 'lt' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`} title="Lietuvių">🇱🇹</button>
                                     <button onClick={() => setLang('en')} className={`text-xl transition-all duration-200 hover:scale-110 ${lang === 'en' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`} title="English">🇬🇧</button>
                                     <button onClick={() => setLang('uk')} className={`text-xl transition-all duration-200 hover:scale-110 ${lang === 'uk' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`} title="Українська">🇺🇦</button>
                                 </div>
 
-                                <label className="cursor-pointer bg-blue-600 dark:bg-flatBlue hover:bg-blue-700 dark:hover:bg-blue-500 text-white py-1.5 px-4 rounded-md shadow-sm transition-colors text-sm font-medium flex items-center gap-2">
+                                <button onClick={() => window.print()} className="hidden md:flex items-center gap-1.5 text-slate-500 hover:text-brandBlue font-semibold text-sm transition-colors">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                                    <span>{t.print}</span>
+                                </button>
+
+                                <label className="cursor-pointer bg-brandRed hover:bg-red-600 hover:scale-105 text-white py-1.5 px-4 rounded-md shadow-sm transition-all text-sm font-semibold flex items-center gap-2">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
                                     <span className="hidden sm:inline">{t.uploadDesktop}</span>
                                     <span className="sm:hidden">{t.uploadMobile}</span>
@@ -704,164 +583,96 @@
                                 </label>
                             </div>
                         </div>
-                        {/* Mobile Search and Tools */}
+                        {/* Mobile Search & Lang */}
                         <div className="md:hidden px-4 pb-3 flex items-center gap-3"> 
                             <div className="relative w-full">
-                                <svg className="w-4 h-4 text-gray-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                                <input 
-                                    type="text" 
-                                    placeholder={t.search}
-                                    className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-md bg-gray-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-blue-500 dark:focus:ring-flatBlue outline-none text-slate-900 dark:text-white transition-colors"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
+                                <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                <input type="text" placeholder={t.search} className="w-full pl-9 pr-4 py-2 text-sm border border-slate-300 rounded-md bg-white focus:ring-2 focus:ring-brandBlue outline-none text-slate-800 shadow-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                             </div>
-                            
-                            <button 
-                                onClick={() => setFontSizeLevel((prev) => (prev + 1) % 3)}
-                                className="w-9 h-9 flex items-center justify-center rounded-full text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shrink-0 font-bold select-none"
-                                title={t.textSizeToggle}
-                            >
-                                <span className="text-sm leading-none">A</span><span className="text-[10px] leading-none align-top">+</span>
-                            </button>
-
-                            <button 
-                                onClick={() => setIsDark(!isDark)}
-                                className="p-2 rounded-full text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors shrink-0"
-                            >
-                                {isDark ? (
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                                ) : (
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
-                                )}
-                            </button>
-
                             <div className="flex items-center gap-2 shrink-0">
                                 <button onClick={() => setLang('lt')} className={`text-xl transition-all duration-200 ${lang === 'lt' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale'}`}>🇱🇹</button>
                                 <button onClick={() => setLang('en')} className={`text-xl transition-all duration-200 ${lang === 'en' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale'}`}>🇬🇧</button>
-                                <button onClick={() => setLang('uk')} className={`text-xl transition-all duration-200 ${lang === 'uk' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale'}`}>🇺🇦</button>
                             </div>
                         </div>
                     </header>
 
-                    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
+                    {/* Sticky KPI Bar (Red) */}
+                    <div className="sticky top-16 md:top-16 z-20 bg-brandRed text-white py-2 shadow-md print:hidden">
+                        <div className="max-w-6xl mx-auto px-4 flex justify-between items-center text-sm">
+                            <span className="font-bold tracking-wide">{t.listTitle}</span>
+                            <div className="flex items-center gap-4 md:gap-6 font-semibold">
+                                <div className="flex gap-1.5">
+                                    <span className="opacity-80 hidden md:inline">{t.totalParts}</span>
+                                    <span>{totalParts}</span>
+                                </div>
+                                <div className="w-px h-4 bg-white/30"></div>
+                                <div className="flex gap-1.5">
+                                    <span className="opacity-80 hidden md:inline">{t.totalPcs}</span>
+                                    <span>{totalQty}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <main className="max-w-6xl mx-auto px-4 mt-6">
                         {error && (
-                            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 text-red-700 dark:text-red-400 rounded-lg flex items-center gap-3 transition-colors">
-                                <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                <p className="text-sm font-medium">{error}</p>
-                                <button onClick={() => setError(null)} className="ml-auto text-red-500 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300">✕</button>
+                            <div className="mb-6 p-4 bg-white border-l-4 border-brandRed text-slate-800 rounded-md shadow-sm flex items-center gap-3 print:hidden">
+                                <svg className="w-5 h-5 flex-shrink-0 text-brandRed" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <p className="text-sm font-semibold">{error}</p>
+                                <button onClick={() => setError(null)} className="ml-auto text-slate-400 hover:text-brandRed">✕</button>
                             </div>
                         )}
 
-                        <div className="mb-6 flex justify-between items-end">
-                            <div>
-                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white transition-colors">{t.listTitle}</h2>
-                                <p className="text-sm text-gray-500 dark:text-slate-400 mt-1 transition-colors">
-                                    {isLoading ? t.fetching : t.showing(filteredParts.length, parts.length)}
-                                </p>
-                            </div>
-                        </div>
-
                         {isLoading ? (
-                            <div className="text-center py-20 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm flex flex-col items-center transition-colors">
-                                <svg className="animate-spin h-8 w-8 text-blue-600 dark:text-flatBlue mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                <h3 className="text-base font-semibold text-gray-900 dark:text-white transition-colors">{t.loading}</h3>
-                                <p className="mt-1 text-sm text-gray-500 dark:text-slate-400 max-w-sm mx-auto transition-colors">{t.connecting}</p>
-                            </div>
+                            <SkeletonGrid />
                         ) : filteredParts.length === 0 ? (
-                            <div className="text-center py-20 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm transition-colors">
-                                <div className="mx-auto w-16 h-16 bg-gray-50 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4 transition-colors">
-                                    <svg className="h-8 w-8 text-gray-400 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                </div>
-                                <h3 className="text-base font-semibold text-gray-900 dark:text-white transition-colors">{t.noPartsTitle}</h3>
-                                <p className="mt-1 text-sm text-gray-500 dark:text-slate-400 max-w-sm mx-auto transition-colors">{t.noPartsDesc}</p>
+                            <div className="text-center py-20 bg-white rounded-md border border-slate-200 shadow-sm print:hidden">
+                                <div className="mx-auto w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4"><svg className="h-8 w-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+                                <h3 className="text-base font-bold text-brandBlue">{t.noPartsTitle}</h3>
+                                <p className="mt-1 text-sm text-slate-500 max-w-sm mx-auto">{t.noPartsDesc}</p>
                             </div>
                         ) : (
-                            <div className="bg-white dark:bg-slate-800 shadow-sm border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden transition-colors">
-                                {/* Desktop Lentelė */}
-                                <div className="hidden md:block overflow-x-auto">
-                                    <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700 transition-colors">
-                                        <thead className="bg-gray-50 dark:bg-slate-900/50 transition-colors">
-                                            <tr>
-                                                <th className="px-6 py-3 text-left font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">{t.name}</th>
-                                                <th className="px-6 py-3 text-left font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">{t.cutting} (L x W x T)</th>
-                                                <th className="px-6 py-3 text-left font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">{t.final} (L x W x T)</th>
-                                                <th className="px-6 py-3 text-right font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">{t.collection}</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-200 dark:divide-slate-700 transition-colors">
-                                            {filteredParts.map(part => (
-                                                <tr key={part.id} onClick={() => setSelectedPart(part)} className="hover:bg-blue-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors group">
-                                                    <td className="px-6 py-4 whitespace-nowrap text-gray-900 dark:text-white font-bold">{part.name}</td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-gray-600 dark:text-slate-300 font-mono text-xs">
-                                                        {part.cutL} x {part.cutW} x {part.cutT}
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-blue-600 dark:text-blue-400 font-mono text-xs font-semibold">
-                                                        {part.finalL} x {part.finalW} x {part.finalT}
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                                                        <span className="bg-slate-800 dark:bg-slate-600 text-white dark:text-slate-100 text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap shadow-sm transition-colors">
-                                                            {part.code}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                            <div className="bg-white p-2 rounded-md border border-slate-200 shadow-sm print:p-0 print:border-none print:shadow-none print:bg-transparent">
+                                {/* Desktop Grid Header */}
+                                <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-3 border-b border-slate-200 text-brandBlue font-bold text-sm tracking-wide uppercase print:grid print:border-b-2 print:border-black print:text-black">
+                                    <div className="col-span-4">{t.name}</div>
+                                    <div className="col-span-3">{t.cutting} (L x W x T)</div>
+                                    <div className="col-span-3">{t.final} (L x W x T)</div>
+                                    <div className="col-span-2 text-right">{t.collection}</div>
                                 </div>
-
-                                {/* Mobile Sąrašas */}
-                                <div className="md:hidden divide-y divide-gray-100 dark:divide-slate-700 transition-colors">
-                                    {filteredParts.map(part => (
-                                        <div key={part.id} onClick={() => setSelectedPart(part)} className="p-4 hover:bg-blue-50 dark:hover:bg-slate-700/50 active:bg-blue-100 dark:active:bg-slate-600 cursor-pointer transition-colors flex flex-col gap-2">
-                                            <div className="flex justify-between items-start gap-2">
-                                                <span className="text-sm font-bold text-gray-900 dark:text-white transition-colors">{part.name}</span>
-                                                <span className="bg-slate-800 dark:bg-slate-600 text-white text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 shadow-sm transition-colors">
-                                                    {part.code}
-                                                </span>
-                                            </div>
-                                            <div className="flex gap-6 text-xs font-mono mt-0.5">
-                                                <div className="flex flex-col">
-                                                    <span className="text-gray-400 dark:text-slate-500 text-[9px] uppercase mb-0.5 transition-colors">{t.cutting}</span>
-                                                    <span className="text-gray-600 dark:text-slate-300 transition-colors">{part.cutL} x {part.cutW} x {part.cutT}</span>
-                                                </div>
-                                                <div className="flex flex-col">
-                                                    <span className="text-blue-400 dark:text-blue-500 text-[9px] uppercase mb-0.5 transition-colors">{t.final}</span>
-                                                    <span className="text-blue-600 dark:text-blue-400 font-semibold transition-colors">{part.finalL} x {part.finalW} x {part.finalT}</span>
-                                                </div>
-                                            </div>
-                                        </div>
+                                
+                                {/* Rows List */}
+                                <div className="flex flex-col gap-2 md:gap-0 print:gap-0">
+                                    {visibleParts.map(part => (
+                                        <GridRow key={part.id} part={part} onClick={setSelectedPart} t={t} />
                                     ))}
                                 </div>
+                                
+                                {/* Infinite Scroll Sentinel */}
+                                {visibleParts.length < filteredParts.length && (
+                                    <div ref={loaderRef} className="p-4 flex justify-center print:hidden">
+                                        <svg className="animate-spin h-5 w-5 text-brandBlue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </main>
 
-                    {/* Modalas su Detalės Kortele */}
+                    {/* Modalas / Modal */}
                     {selectedPart && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-                            <div 
-                                className="absolute inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm transition-colors"
-                                onClick={() => setSelectedPart(null)}
-                            ></div>
-                            
-                            <div className="relative w-full max-w-2xl z-10 flex flex-col animate-fade-in-up">
-                                <div className="flex justify-end mb-3">
-                                    <button 
-                                        onClick={() => setSelectedPart(null)}
-                                        className="text-white bg-black/40 hover:bg-black/60 dark:bg-white/20 dark:hover:bg-white/30 rounded-full p-2 backdrop-blur-md transition-colors"
-                                        title={t.close}
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-                                        </svg>
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 print:hidden" role="dialog" aria-modal="true">
+                            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-fade-in" onClick={() => setSelectedPart(null)}></div>
+                            <div className="relative w-full max-w-2xl z-10 flex flex-col">
+                                <div className="hidden md:flex justify-end mb-3">
+                                    <button onClick={() => setSelectedPart(null)} className="text-white bg-slate-900/40 hover:bg-brandRed hover:scale-110 rounded-full p-2 backdrop-blur-md transition-all shadow-lg" title={t.close} aria-label={t.close}>
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                                     </button>
                                 </div>
-                                <div className="max-h-[85vh] overflow-y-auto rounded-xl">
-                                    <PartCard part={selectedPart} t={t} isDark={isDark} />
+                                <div className="max-h-[85vh] overflow-y-auto rounded-md shadow-2xl">
+                                    <PartCard part={selectedPart} t={t} onClose={() => setSelectedPart(null)} />
                                 </div>
                             </div>
                         </div>
