@@ -247,9 +247,38 @@
                                 if (edge.side === 'left') { bwr = bw; }
                                 if (edge.side === 'right') { bx = x + scaledL - bw; bwr = bw; }
 
+                                const renderFlutes = () => {
+                                    if (!edge.isFluted || !isVis) return null;
+                                    const len = edge.side === 'top' || edge.side === 'bottom' ? bwr : bhr;
+                                    const actualInset = Math.min(8, len * 0.15); // Start/finish few mm from edge
+                                    const spacing = bw * 0.25;
+                                    const center = bw / 2;
+                                    
+                                    return [-1, 0, 1].map(i => {
+                                        const offset = center + (i * spacing);
+                                        let lx1, ly1, lx2, ly2;
+                                        if (edge.side === 'top' || edge.side === 'bottom') {
+                                            lx1 = bx + actualInset; lx2 = bx + bwr - actualInset;
+                                            ly1 = ly2 = by + offset;
+                                        } else {
+                                            lx1 = lx2 = bx + offset;
+                                            ly1 = by + actualInset; ly2 = by + bhr - actualInset;
+                                        }
+                                        return (
+                                            <line 
+                                                key={i} x1={lx1} y1={ly1} x2={lx2} y2={ly2} 
+                                                stroke="#78350f" 
+                                                strokeWidth="0.6" 
+                                                opacity="0.5" 
+                                            />
+                                        );
+                                    });
+                                };
+
                                 return (
                                     <g key={edge.idx} style={{ opacity: isVis ? 1 : 0, transition: 'opacity 0.4s ease-in-out' }}>
                                         <rect x={bx} y={by} width={bwr} height={bhr} fill={edge.fill} />
+                                        {renderFlutes()}
                                     </g>
                                 );
                             })}
