@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="lt" class="transition-colors duration-200">
 <head>
@@ -6,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Detalių Briaunavimas</title>
     
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -23,11 +23,14 @@
         }
     </script>
     
+    <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
+    <!-- Babel for JSX compilation -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+    <!-- PapaParse for high-performance CSV parsing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
     <style>
@@ -330,10 +333,16 @@
                 return () => clearInterval(interval);
             }, [steps.length]);
 
-            // Helper to format A -> apvalinta, F -> fluted for display only
+            // Helper to format A -> apvalinta, F -> fluted, AF/A F -> apvalinta, fluted for display only
             const formatBandingString = (val) => {
                 if (!val) return val;
-                return val.replace(/\bA\b/g, t.rounded).replace(/\bF\b/g, t.fluted);
+                // Pirma pakeičiame "AF" arba "A F" (ir atvirkštinį "FA") junginius, kad įdėtume kablelį
+                let formatted = val.replace(/\bA\s*F\b/g, `${t.rounded}, ${t.fluted}`);
+                formatted = formatted.replace(/\bF\s*A\b/g, `${t.fluted}, ${t.rounded}`);
+                // Pakeičiame pavienes likusias raides
+                formatted = formatted.replace(/\bA\b/g, t.rounded);
+                formatted = formatted.replace(/\bF\b/g, t.fluted);
+                return formatted;
             };
 
             return (
@@ -722,4 +731,3 @@
     </script>
 </body>
 </html>
-
