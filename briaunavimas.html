@@ -174,7 +174,7 @@
             </div>
         ));
 
-        const Part2DView = memo(({ length, width, steps, visibleCount, clipId }) => {
+        const Part2DView = memo(({ length, width, steps, visibleCount, clipId, partName }) => {
             const maxDim = Math.max(length, width) || 1;
             const scale = 100 / maxDim; 
             const scaledL = length * scale;
@@ -210,16 +210,38 @@
             });
 
             const edgesArray = Object.values(mappedEdges).filter(Boolean).sort((a, b) => a.idx - b.idx);
+            
+            // Evaluators for active logic
+            const isActive = (side) => mappedEdges[side] && mappedEdges[side].idx < visibleCount;
+            const isRounded = (side) => isActive(side) && mappedEdges[side].isRounded;
+            // Thick banding means it's active AND it doesn't contain '0.4'
+            const isThick = (side) => isActive(side) && !mappedEdges[side].val.includes('0.4');
+
             const R = 8, eps = 0.01; 
             let rtl = eps, rtr = eps, rbl = eps, rbr = eps;
 
-            const isActive = (side) => mappedEdges[side] && mappedEdges[side].idx < visibleCount;
-            const isRounded = (side) => isActive(side) && mappedEdges[side].isRounded;
+            // Base desire to round corners
+            let wantRtl = isRounded('top') || isRounded('left');
+            let wantRtr = isRounded('top') || isRounded('right');
+            let wantRbl = isRounded('bottom') || isRounded('left');
+            let wantRbr = isRounded('bottom') || isRounded('right');
 
-            if (isRounded('top') || isRounded('left')) rtl = R;
-            if (isRounded('top') || isRounded('right')) rtr = R;
-            if (isRounded('bottom') || isRounded('right')) rbr = R;
-            if (isRounded('bottom') || isRounded('left')) rbl = R;
+            // Specialized LR Logic: If part name has left, right, or LR, 
+            // ONLY round corners where THICK banding touches THICK banding
+            const nameHasLR = /(left|right|\blr\b)/i.test(partName || '');
+
+            if (nameHasLR) {
+                wantRtl = wantRtl && isThick('top') && isThick('left');
+                wantRtr = wantRtr && isThick('top') && isThick('right');
+                wantRbl = wantRbl && isThick('bottom') && isThick('left');
+                wantRbr = wantRbr && isThick('bottom') && isThick('right');
+            }
+
+            // Apply calculated corners
+            if (wantRtl) rtl = R;
+            if (wantRtr) rtr = R;
+            if (wantRbl) rbl = R;
+            if (wantRbr) rbr = R;
 
             const boardPathD = `M ${x + rtl} ${y} L ${x + scaledL - rtr} ${y} A ${rtr} ${rtr} 0 0 1 ${x + scaledL} ${y + rtr} L ${x + scaledL} ${y + scaledW - rbr} A ${rbr} ${rbr} 0 0 1 ${x + scaledL - rbr} ${y + scaledW} L ${x + rbl} ${y + scaledW} A ${rbl} ${rbl} 0 0 1 ${x} ${y + scaledW - rbl} L ${x} ${y + rtl} A ${rtl} ${rtl} 0 0 1 ${x + rtl} ${y} Z`;
 
@@ -360,7 +382,7 @@
                         </div>
                         
                         <div className="mt-1">
-                            <Part2DView length={part.cutL} width={part.cutW} steps={steps} visibleCount={visibleCount} clipId={part.id} />
+                            <Part2DView length={part.cutL} width={part.cutW} steps={steps} visibleCount={visibleCount} clipId={part.id} partName={part.name} />
                         </div>
 
                         {part.note && (
