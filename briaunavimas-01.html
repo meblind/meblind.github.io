@@ -1,314 +1,288 @@
 <!DOCTYPE html>
-<html lang="lt" class="transition-colors duration-200">
+<html lang="lt">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Detalių Briaunavimas</title>
 
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-tailwind.config = {
-    darkMode: 'class',
-    theme: {
-        extend: {
-            colors: {
-                brandBg: '#d9e8e8',
-                brandBlue: '#264A68',
-                brandHover: '#203b53',
-                brandRed: '#ef3b46'
-            }
-        }
-    }
-}
-</script>
-
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-
 <style>
-body { font-family: system-ui, sans-serif; }
+/* =====================
+   NHS-STYLE BASE
+===================== */
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    background: #f0f4f5;
+    color: #212b32;
+}
+
+.container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 16px;
+}
+
+/* Header */
+.header {
+    background: #005eb8;
+    color: white;
+    padding: 16px;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+/* Input */
+input {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #4c6272;
+    font-size: 16px;
+    margin-bottom: 16px;
+}
+
+/* Button */
+button {
+    background: #005eb8;
+    color: white;
+    border: none;
+    padding: 10px 14px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #003f8c;
+}
+
+/* Card list */
+.card {
+    background: white;
+    padding: 12px;
+    border: 1px solid #d8dde0;
+    margin-bottom: 10px;
+    cursor: pointer;
+}
+
+.card:focus {
+    outline: 3px solid #ffdd00;
+}
+
+/* Modal */
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-box {
+    background: white;
+    padding: 20px;
+    max-width: 400px;
+    width: 90%;
+}
+
+/* Status */
+.status {
+    margin: 10px 0;
+}
 </style>
 </head>
 
-<body class="bg-brandBg text-slate-800">
-<div id="root"></div>
+<body>
+
+<div class="header">Detalių Briaunavimas</div>
+
+<div class="container">
+
+<input id="search" placeholder="Ieškoti..." />
+
+<div id="status" class="status"></div>
+
+<div id="list"></div>
+
+<button id="loadMore" hidden>Load more</button>
+
+</div>
+
+<!-- Modal -->
+<div id="modal" hidden class="modal" role="dialog" aria-modal="true">
+    <div class="modal-box">
+        <h2 id="modalTitle"></h2>
+        <p id="modalBody"></p>
+        <button id="closeModal">Uždaryti</button>
+    </div>
+</div>
 
 <script>
-const {useState,useEffect,useMemo,useRef,useCallback,memo} = React;
-
 /* =====================
-   HELPERS
+   STATE
 ===================== */
 
-const CACHE_VERSION = 5;
-const CACHE_KEY = `cached_parts_csv_v${CACHE_VERSION}`;
-
-const extractFeatures = (str) => {
-    const tokens = str.toUpperCase().split(/\s+/);
-    return {
-        hasA: tokens.includes('A') || tokens.includes('AF') || tokens.includes('FA'),
-        hasF: tokens.includes('F') || tokens.includes('AF') || tokens.includes('FA'),
-        dim: str.replace(/\b(A|F|AF|FA)\b/ig,'').trim()
-    };
-};
+let parts = [];
+let filtered = [];
+let visibleCount = 50;
 
 /* =====================
-   INDEXED DB
+   ELEMENTS
 ===================== */
 
-const idb = {
-    dbPromise: new Promise((resolve,reject)=>{
-        const req=indexedDB.open('EdgeBandingCache',1);
-        req.onupgradeneeded=e=>e.target.result.createObjectStore('csvStore');
-        req.onsuccess=e=>resolve(e.target.result);
-        req.onerror=e=>reject(e.target.error);
-    }),
-    async get(key){
-        const db=await this.dbPromise;
-        return new Promise((res,rej)=>{
-            const r=db.transaction('csvStore').objectStore('csvStore').get(key);
-            r.onsuccess=()=>res(r.result);
-            r.onerror=()=>rej(r.error);
+const searchEl = document.getElementById('search');
+const listEl = document.getElementById('list');
+const statusEl = document.getElementById('status');
+const loadMoreBtn = document.getElementById('loadMore');
+
+const modal = document.getElementById('modal');
+const modalTitle = document.getElementById('modalTitle');
+const modalBody = document.getElementById('modalBody');
+const closeModal = document.getElementById('closeModal');
+
+/* =====================
+   CSV PARSE
+===================== */
+
+function parseCSV(text) {
+    const rows = text.split('\n');
+
+    const result = [];
+
+    rows.forEach((row, i) => {
+        const c = row.split(',');
+
+        if (c.length < 10) return;
+
+        const cutL = Number(c[5]);
+        if (!Number.isFinite(cutL)) return;
+
+        result.push({
+            id: i,
+            name: c[2] || 'Detalė',
+            code: c[1] || '-',
+            cutL: Number(c[5]) || 0,
+            cutW: Number(c[6]) || 0
         });
-    },
-    async set(key,val){
-        const db=await this.dbPromise;
-        return new Promise((res,rej)=>{
-            const r=db.transaction('csvStore','readwrite').objectStore('csvStore').put(val,key);
-            r.onsuccess=res;
-            r.onerror=rej;
-        });
-    }
-};
-
-/* =====================
-   HOOKS
-===================== */
-
-function useDebounce(value,delay){
-    const [v,setV]=useState(value);
-    useEffect(()=>{
-        const t=setTimeout(()=>setV(value),delay);
-        return ()=>clearTimeout(t);
-    },[value]);
-    return v;
-}
-
-/* =====================
-   MAIN APP
-===================== */
-
-function App(){
-
-const [lang,setLang]=useState('lt');
-const [search,setSearch]=useState('');
-const debounced=useDebounce(search,300);
-
-const [parts,setParts]=useState([]);
-const [loading,setLoading]=useState(true);
-const [error,setError]=useState(null);
-const [selected,setSelected]=useState(null);
-
-const observerRef=useRef(null);
-const loaderRef=useRef(null);
-const lastFocus=useRef(null);
-
-/* =====================
-   LOCAL STORAGE
-===================== */
-
-useEffect(()=>{
-    const l=localStorage.getItem('lang');
-    const s=localStorage.getItem('search');
-    if(l) setLang(l);
-    if(s) setSearch(s);
-},[]);
-
-useEffect(()=>localStorage.setItem('lang',lang),[lang]);
-useEffect(()=>localStorage.setItem('search',search),[search]);
-
-/* =====================
-   FETCH CSV
-===================== */
-
-const parseCSV = useCallback((text)=>{
-    Papa.parse(text,{
-        skipEmptyLines:true,
-        complete:(res)=>{
-            try{
-                if(!res.data?.length) throw Error();
-
-                const list=[];
-
-                res.data.forEach((c,i)=>{
-                    if(c.length<10) return;
-
-                    const cutL=Number(c[5]);
-                    if(!Number.isFinite(cutL)) return;
-
-                    list.push({
-                        id:i+"",
-                        name:c[2]||'Detalė',
-                        code:c[1]||'-',
-                        cutL:Number(c[5])||0,
-                        cutW:Number(c[6])||0,
-                        cutT:Number(c[7])||18,
-                        finalL:Number(c[8])||0,
-                        finalW:Number(c[9])||0,
-                        finalT:Number(c[10])||18
-                    });
-                });
-
-                if(list.length===0) throw Error();
-                setParts(list);
-                setError(null);
-
-            }catch{
-                setError("CSV klaida");
-            }
-        }
-    });
-},[]);
-
-useEffect(()=>{
-    const controller=new AbortController();
-
-    (async()=>{
-        try{
-            const local=await idb.get(CACHE_KEY);
-
-            if(local){
-                parseCSV(local);
-                setLoading(false);
-            }
-
-            const r=await fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vQSHJJdOhsNzRuq-WmcCS1SFCUqvRlYFYU9I9rs1LL9zlJ8AQWzwB3l_1PY67wbnHxhTDTi5VrC1jRq/pub?gid=1947074840&single=true&output=csv",{signal:controller.signal});
-            const txt=await r.text();
-
-            if(txt.trim()!== (local||'').trim()){
-                await idb.set(CACHE_KEY,txt);
-                parseCSV(txt);
-            }
-
-        }catch(e){
-            setError("Fetch klaida");
-        }finally{
-            setLoading(false);
-        }
-    })();
-
-    return ()=>controller.abort();
-},[]);
-
-/* =====================
-   FILTER
-===================== */
-
-const filtered = useMemo(()=>{
-    const s=debounced.toLowerCase();
-    if(!s) return parts;
-
-    return parts.filter(p=>{
-        return `${p.name} ${p.code}`.toLowerCase().includes(s);
-    });
-},[parts,debounced]);
-
-/* =====================
-   RENDER LIMIT
-===================== */
-
-const [limit,setLimit]=useState(50);
-
-useEffect(()=>setLimit(50),[debounced]);
-
-const visible = useMemo(()=>filtered.slice(0,limit),[filtered,limit]);
-
-useEffect(()=>{
-    if(observerRef.current) observerRef.current.disconnect();
-
-    observerRef.current=new IntersectionObserver(entries=>{
-        if(entries[0].isIntersecting){
-            setLimit(p=>p+50);
-        }
     });
 
-    if(loaderRef.current) observerRef.current.observe(loaderRef.current);
-
-    return ()=>observerRef.current.disconnect();
-},[visible.length,filtered.length]);
-
-/* =====================
-   MODAL FOCUS
-===================== */
-
-useEffect(()=>{
-    if(selected){
-        lastFocus.current=document.activeElement;
-        document.body.style.overflow='hidden';
-    }else{
-        document.body.style.overflow='auto';
-        lastFocus.current?.focus();
-    }
-},[selected]);
-
-/* =====================
-   UI
-===================== */
-
-return React.createElement("div",{className:"max-w-4xl mx-auto p-4"},
-
-React.createElement("input",{
-value:search,
-onChange:e=>setSearch(e.target.value),
-placeholder:"Search",
-className:"w-full mb-4 p-2 border"
-}),
-
-loading ? "Loading..." :
-
-error ? React.createElement("div",null,
-error,
-React.createElement("button",{onClick:()=>location.reload()},"Retry")
-) :
-
-React.createElement("div",null,
-
-visible.map(p=>
-React.createElement("div",{
-key:p.id,
-role:"button",
-tabIndex:0,
-onClick:()=>setSelected(p),
-onKeyDown:e=>{
-if(e.key==="Enter"||e.key===" ") setSelected(p);
-},
-className:"p-3 border mb-2 cursor-pointer"
-},
-p.name+" ("+p.code+")"
-)
-),
-
-visible.length<filtered.length &&
-React.createElement("div",{ref:loaderRef},"Loading more...")
-),
-
-selected &&
-React.createElement("div",{className:"fixed inset-0 bg-black/50 flex items-center justify-center"},
-React.createElement("div",{className:"bg-white p-6"},
-React.createElement("h2",null,selected.name),
-React.createElement("p",null,selected.cutL+"x"+selected.cutW),
-React.createElement("button",{onClick:()=>setSelected(null)},"Close")
-))
-);
+    return result;
 }
 
 /* =====================
    RENDER
 ===================== */
 
-ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+function render() {
+    listEl.innerHTML = '';
+
+    const visible = filtered.slice(0, visibleCount);
+
+    visible.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.tabIndex = 0;
+
+        div.textContent = `${p.name} (${p.code})`;
+
+        div.onclick = () => openModal(p);
+        div.onkeydown = e => {
+            if (e.key === 'Enter') openModal(p);
+        };
+
+        listEl.appendChild(div);
+    });
+
+    loadMoreBtn.hidden = visible.length >= filtered.length;
+
+    statusEl.textContent = `${filtered.length} rezultatų`;
+}
+
+/* =====================
+   FILTER
+===================== */
+
+function applyFilter() {
+    const s = searchEl.value.toLowerCase();
+
+    filtered = parts.filter(p =>
+        (p.name + ' ' + p.code).toLowerCase().includes(s)
+    );
+
+    visibleCount = 50;
+    render();
+}
+
+/* =====================
+   MODAL
+===================== */
+
+function openModal(p) {
+    modalTitle.textContent = p.name;
+    modalBody.textContent = `${p.cutL} x ${p.cutW}`;
+    modal.hidden = false;
+    document.body.style.overflow = 'hidden';
+}
+
+function closeModalFn() {
+    modal.hidden = true;
+    document.body.style.overflow = 'auto';
+}
+
+/* =====================
+   EVENTS
+===================== */
+
+searchEl.addEventListener('input', applyFilter);
+
+loadMoreBtn.onclick = () => {
+    visibleCount += 50;
+    render();
+};
+
+closeModal.onclick = closeModalFn;
+modal.onclick = e => {
+    if (e.target === modal) closeModalFn();
+};
+
+/* =====================
+   FETCH (WITH CACHE)
+===================== */
+
+async function loadData() {
+    const CACHE_KEY = 'csv_cache_v1';
+
+    try {
+        const cached = localStorage.getItem(CACHE_KEY);
+
+        if (cached) {
+            parts = parseCSV(cached);
+            filtered = parts;
+            render();
+        }
+
+        const res = await fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vQSHJJdOhsNzRuq-WmcCS1SFCUqvRlYFYU9I9rs1LL9zlJ8AQWzwB3l_1PY67wbnHxhTDTi5VrC1jRq/pub?gid=1947074840&single=true&output=csv");
+        const text = await res.text();
+
+        if (text !== cached) {
+            localStorage.setItem(CACHE_KEY, text);
+            parts = parseCSV(text);
+            filtered = parts;
+            render();
+        }
+
+    } catch {
+        statusEl.textContent = 'Klaida kraunant duomenis';
+    }
+}
+
+/* =====================
+   INIT
+===================== */
+
+loadData();
 
 </script>
+
 </body>
 </html>
