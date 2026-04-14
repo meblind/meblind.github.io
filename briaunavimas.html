@@ -34,7 +34,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
     <style>
-        body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; transition: font-size 0.2s ease-out; }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -175,7 +175,6 @@
         ));
 
         const Part2DView = memo(({ length, width, steps, visibleCount, clipId, partName }) => {
-            // Determine Rotation: First banded side should be at the bottom
             let boardXDim = length;
             let boardYDim = width;
             let isRotated = false;
@@ -185,7 +184,6 @@
                 const matchL = new RegExp('(^|\\D)' + length + '(\\D|$)').test(firstStepVal);
                 const matchW = new RegExp('(^|\\D)' + width + '(\\D|$)').test(firstStepVal);
 
-                // If the first step matches the width, rotate the part so width is on the X axis (bottom)
                 if (matchW && !matchL) {
                     boardXDim = width;
                     boardYDim = length;
@@ -194,7 +192,6 @@
             }
 
             const maxDim = Math.max(boardXDim, boardYDim) || 1;
-            // Increased scale from 100 to 110 to make the animated part bigger
             const scale = 110 / maxDim; 
             const scaledX = boardXDim * scale;
             const scaledY = boardYDim * scale;
@@ -218,7 +215,6 @@
                 const matchY = matchYPattern.test(val);
 
                 if (idx === 0) {
-                    // Force the first step to always be the bottom edge
                     side = 'bottom';
                 } else if (matchX && !matchY) {
                     if (!mappedEdges.bottom) side = 'bottom'; else if (!mappedEdges.top) side = 'top';
@@ -234,7 +230,6 @@
 
             const edgesArray = Object.values(mappedEdges).filter(Boolean).sort((a, b) => a.idx - b.idx);
             
-            // Evaluators for active logic
             const isActive = (side) => mappedEdges[side] && mappedEdges[side].idx < visibleCount;
             const isRounded = (side) => isActive(side) && mappedEdges[side].isRounded;
             const isThick = (side) => isActive(side) && !mappedEdges[side].val.includes('0.4');
@@ -242,14 +237,11 @@
             const R = 8, eps = 0.01; 
             let rtl = eps, rtr = eps, rbl = eps, rbr = eps;
 
-            // Base desire to round corners
             let wantRtl = isRounded('top') || isRounded('left');
             let wantRtr = isRounded('top') || isRounded('right');
             let wantRbl = isRounded('bottom') || isRounded('left');
             let wantRbr = isRounded('bottom') || isRounded('right');
 
-            // Specialized LR Logic: If part name has left, right, or LR, 
-            // ONLY round corners where THICK banding touches THICK banding
             const nameHasLR = /(left|right|\blr\b)/i.test(partName || '');
 
             if (nameHasLR) {
@@ -259,7 +251,6 @@
                 wantRbr = wantRbr && isThick('bottom') && isThick('right');
             }
 
-            // Apply calculated corners
             if (wantRtl) rtl = R;
             if (wantRtr) rtr = R;
             if (wantRbl) rbl = R;
@@ -294,7 +285,7 @@
                                 const renderFlutes = () => {
                                     if (!edge.isFluted || !isVis) return null;
                                     const len = edge.side === 'top' || edge.side === 'bottom' ? bwr : bhr;
-                                    const actualInset = Math.min(8, len * 0.15); // Start/finish few mm from edge
+                                    const actualInset = Math.min(8, len * 0.15); 
                                     const spacing = bw * 0.25;
                                     const center = bw / 2;
                                     
@@ -310,10 +301,10 @@
                                         }
                                         return (
                                             <line 
-                                                key={i} x1={lx1} y1={ly1} x2={lx2} y2={ly2} 
-                                                stroke="#78350f" 
-                                                strokeWidth="0.6" 
-                                                opacity="0.5" 
+                                                key={i} x1={lx1} y1={ly1} x2={lx2} y2={ly2}
+                                                stroke="#78350f"
+                                                strokeWidth="0.6"
+                                                opacity="0.5"
                                             />
                                         );
                                     });
@@ -398,7 +389,6 @@
                             <span className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2 px-1">{t.bandingSeq}</span>
                             {steps.length > 0 ? (
                                 <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
-                                    {/* Header row */}
                                     <div className="grid grid-cols-[28px_2fr_2fr_minmax(50px,1fr)_minmax(50px,1fr)] gap-2 md:gap-3 bg-slate-50/80 px-3 md:px-4 py-2.5 border-b border-slate-100 text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-wider items-center">
                                         <div className="text-center">#</div>
                                         <div>{t.thickness}</div>
@@ -406,7 +396,6 @@
                                         <div className="text-center truncate" title={t.roundedCol}>{t.roundedCol}</div>
                                         <div className="text-center truncate" title={t.flutedCol}>{t.flutedCol}</div>
                                     </div>
-                                    {/* Body */}
                                     <div className="divide-y divide-slate-100 flex-grow flex flex-col justify-center">
                                         {steps.map((s, idx) => {
                                             const isActive = idx < visibleCount;
@@ -415,7 +404,6 @@
                                             const textClass = isActive ? "text-slate-800" : "text-slate-400";
                                             const numClass = isCurrent ? "bg-brandBlue text-white shadow-md shadow-brandBlue/30 scale-105" : (isActive ? "bg-slate-200 text-slate-700 font-bold" : "bg-white text-slate-400 border border-slate-200");
                                             
-                                            // Parse string to separate thickness, dimension, and processing attributes
                                             const valParts = s.val.split(' - ');
                                             let thickness = '-', dimension = '-';
                                             let isRounded = false, isFluted = false;
@@ -513,7 +501,7 @@
         };
 
         const GridRow = memo(({ part, onClick, t }) => (
-            <div onClick={() => onClick(part)} tabIndex="0" onKeyDown={(e) => e.key === 'Enter' && onClick(part)} 
+            <div onClick={() => onClick(part)} tabIndex="0" onKeyDown={(e) => e.key === 'Enter' && onClick(part)}
                  className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 px-4 py-3.5 items-center border-b border-slate-100 last:border-0 hover:bg-slate-50/80 focus:bg-slate-50 focus:ring-2 focus:ring-inset focus:ring-brandBlue/50 outline-none cursor-pointer transition-all duration-200 print:border-b-black print:border-dashed print:py-2 print:gap-1 group">
                 
                 {/* Mobile top info / Desktop col-1 */}
@@ -568,6 +556,13 @@
             
             const [renderLimit, setRenderLimit] = useState(50);
             const loaderRef = useRef(null);
+
+            // Added State for Text Rescaling
+            const [textScale, setTextScale] = useState(100);
+
+            useEffect(() => {
+                document.documentElement.style.fontSize = `${textScale}%`;
+            }, [textScale]);
 
             useEffect(() => {
                 if (selectedPart) {
@@ -675,23 +670,6 @@
                 return () => { isMounted = false; };
             }, [parseCSV, lang]);
 
-            const handleFileUpload = (event) => {
-                const file = event.target.files[0];
-                if (!file) return;
-                setIsLoading(true);
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    parseCSV(e.target.result);
-                    setIsLoading(false);
-                };
-                reader.onerror = () => {
-                    setError(t.errRead);
-                    setIsLoading(false);
-                };
-                reader.readAsText(file);
-                event.target.value = null;
-            };
-
             const filteredParts = useMemo(() => {
                 const searchLower = debouncedSearchTerm.toLowerCase().trim();
                 if (!searchLower) return parts;
@@ -718,54 +696,69 @@
 
             return (
                 <div className="min-h-screen pb-12 transition-colors duration-200">
-                    {/* Top Main Navigation (White/Slate) */}
+                    
+                    {/* Header: Title, Controls, Red Button & Bottom Search */}
                     <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm print:hidden">
-                        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <svg className="w-7 h-7 text-brandBlue" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
-                                <h1 className="text-xl font-bold text-brandBlue hidden sm:block">{t.title}</h1>
+                        
+                        {/* Top Row: Title & Actions */}
+                        <div className="max-w-6xl mx-auto px-4 py-3 sm:py-4 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 sm:gap-4">
+                            
+                            {/* Left: Logo */}
+                            <div className="flex items-center shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" className="w-12 h-12 md:w-14 md:h-14">
+                                    <g fill="none" stroke="rgb(239, 59, 70)" strokeWidth="10" strokeLinejoin="round" strokeLinecap="round">
+                                        <circle cx="40" cy="45" r="12" />
+                                        <path d="M 66.2 55 A 28 28 0 1 0 40 73 L 90 73 L 80 55 Z" />
+                                    </g>
+                                </svg>
                             </div>
                             
-                            <div className="flex items-center gap-4 flex-1 justify-end">
-                                <div className="relative w-full max-w-xs hidden md:block">
-                                    <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                                    <input type="text" placeholder={t.search} className="w-full pl-9 pr-4 py-1.5 text-sm border border-slate-300 rounded-md bg-white focus:bg-white focus:ring-2 focus:ring-brandBlue focus:border-brandBlue outline-none text-slate-800 transition-colors shadow-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                                </div>
-                                
-                                <div className="hidden sm:flex items-center gap-2 border-r border-slate-200 pr-4 mr-1">
-                                    <button onClick={() => setLang('lt')} className={`text-xl transition-all duration-200 hover:scale-110 ${lang === 'lt' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`} title="Lietuvių">🇱🇹</button>
-                                    <button onClick={() => setLang('en')} className={`text-xl transition-all duration-200 hover:scale-110 ${lang === 'en' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`} title="English">🇬🇧</button>
-                                    <button onClick={() => setLang('uk')} className={`text-xl transition-all duration-200 hover:scale-110 ${lang === 'uk' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`} title="Українська">🇺🇦</button>
+                            {/* Middle: Language & Text Size Settings */}
+                            <div className="flex items-center justify-center gap-3 sm:gap-6 flex-1">
+                                {/* Languages */}
+                                <div className="flex items-center gap-1.5 sm:gap-2">
+                                    <button onClick={() => setLang('lt')} className={`text-xl sm:text-2xl transition-all duration-200 hover:scale-110 ${lang === 'lt' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`} title="Lietuvių">🇱🇹</button>
+                                    <button onClick={() => setLang('en')} className={`text-xl sm:text-2xl transition-all duration-200 hover:scale-110 ${lang === 'en' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`} title="English">🇬🇧</button>
+                                    <button onClick={() => setLang('uk')} className={`text-xl sm:text-2xl transition-all duration-200 hover:scale-110 ${lang === 'uk' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`} title="Українська">🇺🇦</button>
                                 </div>
 
-                                <a href="https://docs.google.com/spreadsheets/d/1dmgyXAz_ZEbjI5P5P6MbiwaSTIY6KesygqZ-6gvvvs8/edit?gid=1947074840#gid=1947074840" target="_blank" rel="noopener noreferrer" className="hidden md:flex items-center gap-1.5 text-slate-500 hover:text-brandBlue font-semibold text-sm transition-colors">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                                    <span>{t.editData}</span>
+                                <div className="w-px h-6 sm:h-8 bg-slate-200"></div>
+
+                                {/* Text Size Tools */}
+                                <div className="flex items-center gap-0.5 sm:gap-1 bg-slate-100 p-0.5 sm:p-1 rounded-md border border-slate-200 shadow-inner">
+                                    <button onClick={() => setTextScale(s => Math.max(70, s - 10))} className="px-1.5 sm:px-2.5 py-1 hover:bg-white rounded text-xs sm:text-sm font-bold text-slate-700 shadow-sm transition-all" title="Sumažinti tekstą">A-</button>
+                                    <button onClick={() => setTextScale(100)} className="px-1.5 sm:px-2.5 py-1 hover:bg-white rounded text-xs sm:text-sm font-bold text-slate-700 shadow-sm transition-all" title="Atstatyti tekstą">A</button>
+                                    <button onClick={() => setTextScale(s => Math.min(150, s + 10))} className="px-1.5 sm:px-2.5 py-1 hover:bg-white rounded text-xs sm:text-sm font-bold text-slate-700 shadow-sm transition-all" title="Padidinti tekstą">A+</button>
+                                </div>
+                            </div>
+
+                            {/* Right: Data Edit Button (Replaced CSV Upload) */}
+                            <div className="flex items-center shrink-0">
+                                <a href="https://docs.google.com/spreadsheets/d/1dmgyXAz_ZEbjI5P5P6MbiwaSTIY6KesygqZ-6gvvvs8/edit?gid=1947074840#gid=1947074840" target="_blank" rel="noopener noreferrer" className="cursor-pointer bg-brandRed hover:bg-red-600 hover:scale-105 text-white py-1.5 sm:py-2 px-3 sm:px-5 rounded-lg shadow-md transition-all text-xs sm:text-sm font-bold flex items-center gap-2">
+                                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                    <span className="hidden sm:inline">{t.editData}</span>
                                 </a>
+                            </div>
+                        </div>
 
-                                <label className="cursor-pointer bg-brandRed hover:bg-red-600 hover:scale-105 text-white py-1.5 px-4 rounded-md shadow-sm transition-all text-sm font-semibold flex items-center gap-2">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                                    <span className="hidden sm:inline">{t.uploadDesktop}</span>
-                                    <span className="sm:hidden">{t.uploadMobile}</span>
-                                    <input type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
-                                </label>
-                            </div>
-                        </div>
-                        {/* Mobile Search & Lang */}
-                        <div className="md:hidden px-4 pb-3 flex items-center gap-3"> 
+                        {/* Bottom Row: Full Width Search Input */}
+                        <div className="max-w-5xl mx-auto px-4 pb-5 pt-1 sm:pt-2 w-full">
                             <div className="relative w-full">
-                                <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                                <input type="text" placeholder={t.search} className="w-full pl-9 pr-4 py-2 text-sm border border-slate-300 rounded-md bg-white focus:ring-2 focus:ring-brandBlue outline-none text-slate-800 shadow-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                                <button onClick={() => setLang('lt')} className={`text-xl transition-all duration-200 ${lang === 'lt' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale'}`}>🇱🇹</button>
-                                <button onClick={() => setLang('en')} className={`text-xl transition-all duration-200 ${lang === 'en' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale'}`}>🇬🇧</button>
+                                <svg className="w-6 h-6 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                <input 
+                                    type="text" 
+                                    placeholder={t.search} 
+                                    className="w-full pl-12 pr-4 py-3.5 md:py-4 text-base md:text-lg border-2 border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-4 focus:ring-brandRed/20 focus:border-brandRed outline-none text-slate-800 transition-all shadow-sm placeholder:text-slate-400" 
+                                    value={searchTerm} 
+                                    onChange={(e) => setSearchTerm(e.target.value)} 
+                                />
                             </div>
                         </div>
+
                     </header>
 
                     {/* Sticky KPI Bar (Red) - Design element only */}
-                    <div className="sticky top-16 md:top-16 z-20 bg-brandRed h-1 shadow-sm print:hidden"></div>
+                    <div className="sticky top-0 md:top-0 z-20 bg-brandRed h-1 shadow-sm print:hidden"></div>
 
                     <main className="max-w-6xl mx-auto px-4 mt-6">
                         {error && (
