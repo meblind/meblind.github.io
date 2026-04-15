@@ -385,6 +385,12 @@
                             </div>
                         </div>
 
+                        {/* Top View was moved here, above the edge banding sequence */}
+                        <div className="w-full">
+                            <Part2DView length={part.cutL} width={part.cutW} steps={steps} visibleCount={visibleCount} clipId={part.id} partName={part.name} />
+                        </div>
+
+                        {/* Edge banding sequence is now below Top View */}
                         <div className="flex-grow flex flex-col">
                             <span className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2 px-1">{t.bandingSeq}</span>
                             {steps.length > 0 ? (
@@ -475,10 +481,6 @@
                                     <span className="text-sm font-semibold text-slate-400">-</span>
                                 </div>
                             )}
-                        </div>
-                        
-                        <div className="mt-1">
-                            <Part2DView length={part.cutL} width={part.cutW} steps={steps} visibleCount={visibleCount} clipId={part.id} partName={part.name} />
                         </div>
 
                         {part.note && (
