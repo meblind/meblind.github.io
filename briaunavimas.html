@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="lt" class="transition-colors duration-200">
 <head>
@@ -181,8 +182,10 @@
 
             if (steps.length > 0) {
                 const firstStepVal = steps[0].val;
-                const matchL = new RegExp('(^|\\D)' + length + '(\\D|$)').test(firstStepVal);
-                const matchW = new RegExp('(^|\\D)' + width + '(\\D|$)').test(firstStepVal);
+                // Replace commas with dots for matching dimensions in step string just in case
+                const valNormalized = firstStepVal.replace(',', '.');
+                const matchL = new RegExp('(^|\\D)' + length + '(\\D|$)').test(valNormalized);
+                const matchW = new RegExp('(^|\\D)' + width + '(\\D|$)').test(valNormalized);
 
                 if (matchW && !matchL) {
                     boardXDim = width;
@@ -203,16 +206,18 @@
             const matchYPattern = new RegExp('(^|\\D)' + boardYDim + '(\\D|$)');
 
             steps.forEach((step, idx) => {
+                const valNormalized = step.val.replace(',', '.');
                 const { val } = step;
-                const isThin = val.includes('0.4');
+                // Padengia ir 0.4 ir 0,4
+                const isThin = val.includes('0.4') || val.includes('0,4');
                 const strokeWidth = isThin ? 2.5 : 6; 
                 const fill = isThin ? "#E5C19E" : "#D4A373";
                 const isRounded = val.toUpperCase().includes('A');
                 const isFluted = val.toUpperCase().includes('F');
 
                 let side = null;
-                const matchX = matchXPattern.test(val);
-                const matchY = matchYPattern.test(val);
+                const matchX = matchXPattern.test(valNormalized);
+                const matchY = matchYPattern.test(valNormalized);
 
                 if (idx === 0) {
                     side = 'bottom';
@@ -232,7 +237,8 @@
             
             const isActive = (side) => mappedEdges[side] && mappedEdges[side].idx < visibleCount;
             const isRounded = (side) => isActive(side) && mappedEdges[side].isRounded;
-            const isThick = (side) => isActive(side) && !mappedEdges[side].val.includes('0.4');
+            // Įtraukiame atpažinimą tiek taškui, tiek kableliui
+            const isThick = (side) => isActive(side) && !mappedEdges[side].val.includes('0.4') && !mappedEdges[side].val.includes('0,4');
 
             const R = 8, eps = 0.01; 
             let rtl = eps, rtr = eps, rbl = eps, rbr = eps;
@@ -607,9 +613,19 @@
                         try {
                             if (!results.data || results.data.length === 0) throw new Error(t.errEmpty);
                             
+                            // Sukuriame skaičių nuskaitymo funkciją, kuri kablelius paverčia į taškus
+                            const parseDim = (val, def = 0) => {
+                                if (!val) return def;
+                                // Pakeičiame ',' į '.' prieš paverčiant į skaičių
+                                const parsed = parseFloat(val.toString().replace(',', '.'));
+                                return isNaN(parsed) ? def : parsed;
+                            };
+
                             const newParts = [];
                             results.data.forEach((cols, i) => {
-                                if (cols.length < 10 || isNaN(parseFloat(cols[5]))) return;
+                                // GRIEŽTAS PATIKRINIMAS: atmetame antraščių eilutes (kur matmuo yra tekstas)
+                                const strictCheckDim = cols[5] ? parseFloat(cols[5].toString().replace(',', '.')) : NaN;
+                                if (cols.length < 10 || isNaN(strictCheckDim)) return;
 
                                 const formatEdge = (type, len) => {
                                     if (!type || !len) return null;
@@ -623,12 +639,12 @@
                                     name: cols[2] || `Detalė ${i}`,
                                     material: cols[3] || 'Nenurodyta',
                                     qty: parseInt(cols[4]) || 1,
-                                    cutL: parseFloat(cols[5]) || 0,
-                                    cutW: parseFloat(cols[6]) || 0,
-                                    cutT: parseFloat(cols[7]) || 18,
-                                    finalL: parseFloat(cols[8]) || 0,
-                                    finalW: parseFloat(cols[9]) || 0,
-                                    finalT: parseFloat(cols[10]) || 18,
+                                    cutL: parseDim(cols[5], 0),
+                                    cutW: parseDim(cols[6], 0),
+                                    cutT: parseDim(cols[7], 18),
+                                    finalL: parseDim(cols[8], 0),
+                                    finalW: parseDim(cols[9], 0),
+                                    finalT: parseDim(cols[10], 18),
                                     edges: {
                                         step1: formatEdge(cols[11], cols[12]),
                                         step2: formatEdge(cols[13], cols[14]),
@@ -879,3 +895,6 @@
     </script>
 </body>
 </html>
+
+
+
