@@ -5,24 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Detalių Briaunavimas</title>
     
-    <!-- Tailwind CSS -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='none' stroke='%23ef3b46' stroke-width='6' stroke-linejoin='round' stroke-linecap='round'%3E%3Ccircle cx='40' cy='45' r='12'/%3E%3Cpath d='M 66.2 55 A 28 28 0 1 0 40 73 L 90 73 L 80 55 Z'/%3E%3C/g%3E%3C/svg%3E">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
-                    fontFamily: {
-                        sans: ['var(--font-sans)']
-                    },
-                    spacing: {
-                        '3.5': 'var(--row-py)'
-                    },
-                    borderRadius: {
-                        'md': 'var(--radius)',
-                        'lg': 'var(--radius)',
-                        'xl': 'var(--radius)'
-                    },
+                    fontFamily: { sans: ['var(--font-sans)'] },
+                    spacing: { '3.5': 'var(--row-py)' },
+                    borderRadius: { 'md': 'var(--radius)', 'lg': 'var(--radius)', 'xl': 'var(--radius)' },
                     colors: {
                         white: 'rgb(var(--bg-main) / <alpha-value>)',
                         brandBg: 'rgb(var(--bg-brand) / <alpha-value>)',
@@ -30,219 +23,90 @@
                         brandHover: 'rgb(var(--color-primary-hover) / <alpha-value>)',
                         brandRed: 'rgb(var(--color-danger) / <alpha-value>)',
                         slate: {
-                            50: 'rgb(var(--slate-50) / <alpha-value>)',
-                            100: 'rgb(var(--slate-100) / <alpha-value>)',
-                            200: 'rgb(var(--slate-200) / <alpha-value>)',
-                            300: 'rgb(var(--slate-300) / <alpha-value>)',
-                            400: 'rgb(var(--slate-400) / <alpha-value>)',
-                            500: 'rgb(var(--slate-500) / <alpha-value>)',
-                            600: 'rgb(var(--slate-600) / <alpha-value>)',
-                            700: 'rgb(var(--slate-700) / <alpha-value>)',
-                            800: 'rgb(var(--slate-800) / <alpha-value>)',
-                            900: 'rgb(var(--slate-900) / <alpha-value>)'
+                            50: 'rgb(var(--slate-50) / <alpha-value>)', 100: 'rgb(var(--slate-100) / <alpha-value>)',
+                            200: 'rgb(var(--slate-200) / <alpha-value>)', 300: 'rgb(var(--slate-300) / <alpha-value>)',
+                            400: 'rgb(var(--slate-400) / <alpha-value>)', 500: 'rgb(var(--slate-500) / <alpha-value>)',
+                            600: 'rgb(var(--slate-600) / <alpha-value>)', 700: 'rgb(var(--slate-700) / <alpha-value>)',
+                            800: 'rgb(var(--slate-800) / <alpha-value>)', 900: 'rgb(var(--slate-900) / <alpha-value>)'
                         },
-                        blue: {
-                            50: 'rgb(var(--blue-50) / <alpha-value>)',
-                            100: 'rgb(var(--blue-100) / <alpha-value>)',
-                            200: 'rgb(var(--blue-200) / <alpha-value>)'
-                        },
-                        red: {
-                            50: 'rgb(var(--danger-bg) / <alpha-value>)',
-                            100: 'rgb(var(--danger-border) / <alpha-value>)'
-                        }
+                        blue: { 50: 'rgb(var(--blue-50) / <alpha-value>)', 100: 'rgb(var(--blue-100) / <alpha-value>)', 200: 'rgb(var(--blue-200) / <alpha-value>)' },
+                        red: { 50: 'rgb(var(--danger-bg) / <alpha-value>)', 100: 'rgb(var(--danger-border) / <alpha-value>)' }
                     }
                 }
             }
         }
     </script>
     
-    <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
-    <!-- Babel for JSX compilation -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- PapaParse for high-performance CSV parsing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     
     <style>
         :root, [data-theme="light"] {
-            --bg-brand: 217 232 232;
-            --bg-main: 255 255 255;
-            --slate-50: 248 250 252;
-            --slate-100: 241 245 249;
-            --slate-200: 226 232 240;
-            --slate-300: 203 213 225;
-            --slate-400: 148 163 184;
-            --slate-500: 100 116 139;
-            --slate-600: 71 85 105;
-            --slate-700: 51 65 85;
-            --slate-800: 30 41 59;
-            --slate-900: 15 23 42;
-            --color-primary: 38 74 104;
-            --color-primary-hover: 32 59 83;
-            --color-danger: 239 59 70;
-            --blue-50: 239 246 255;
-            --blue-100: 219 234 254;
-            --blue-200: 191 219 254;
-            --danger-bg: 254 242 242;
-            --danger-border: 254 226 226;
-            --radius: 0.75rem;
-            --row-py: 0.875rem;
+            --bg-brand: 217 232 232; --bg-main: 255 255 255; --slate-50: 248 250 252; --slate-100: 241 245 249;
+            --slate-200: 226 232 240; --slate-300: 203 213 225; --slate-400: 148 163 184; --slate-500: 100 116 139;
+            --slate-600: 71 85 105; --slate-700: 51 65 85; --slate-800: 30 41 59; --slate-900: 15 23 42;
+            --color-primary: 38 74 104; --color-primary-hover: 32 59 83; --color-danger: 239 59 70;
+            --blue-50: 239 246 255; --blue-100: 219 234 254; --blue-200: 191 219 254;
+            --danger-bg: 254 242 242; --danger-border: 254 226 226; --radius: 0.75rem; --row-py: 0.875rem;
             --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            --scroll-thumb: #cbd5e1;
-            --scroll-hover: #94a3b8;
+            --scroll-thumb: #cbd5e1; --scroll-hover: #94a3b8;
         }
         [data-theme="dark"] {
-            --bg-brand: 15 23 42;
-            --bg-main: 30 41 59;
-            --slate-50: 51 65 85;
-            --slate-100: 71 85 105;
-            --slate-200: 71 85 105;
-            --slate-300: 100 116 139;
-            --slate-400: 148 163 184;
-            --slate-500: 203 213 225;
-            --slate-600: 226 232 240;
-            --slate-700: 241 245 249;
-            --slate-800: 248 250 252;
-            --slate-900: 0 0 0;
-            --color-primary: 56 189 248;
-            --color-primary-hover: 125 211 252;
-            --color-danger: 248 113 113;
-            --blue-50: 30 58 138;
-            --blue-100: 30 64 175;
-            --blue-200: 29 78 216;
-            --danger-bg: 127 29 29;
-            --danger-border: 153 27 27;
-            --scroll-thumb: #475569;
-            --scroll-hover: #64748b;
+            --bg-brand: 15 23 42; --bg-main: 30 41 59; --slate-50: 51 65 85; --slate-100: 71 85 105;
+            --slate-200: 71 85 105; --slate-300: 100 116 139; --slate-400: 148 163 184; --slate-500: 203 213 225;
+            --slate-600: 226 232 240; --slate-700: 241 245 249; --slate-800: 248 250 252; --slate-900: 0 0 0;
+            --color-primary: 56 189 248; --color-primary-hover: 125 211 252; --color-danger: 248 113 113;
+            --blue-50: 30 58 138; --blue-100: 30 64 175; --blue-200: 29 78 216; --danger-bg: 127 29 29;
+            --danger-border: 153 27 27; --scroll-thumb: #475569; --scroll-hover: #64748b;
         }
         [data-theme="minimal"] {
-            --bg-brand: 255 255 255;
-            --bg-main: 255 255 255;
-            --slate-50: 249 250 251;
-            --slate-100: 243 244 246;
-            --slate-200: 229 231 235;
-            --slate-300: 209 213 219;
-            --slate-400: 156 163 175;
-            --slate-500: 107 114 128;
-            --slate-600: 75 85 99;
-            --slate-700: 55 65 81;
-            --slate-800: 17 24 39;
-            --slate-900: 0 0 0;
-            --color-primary: 0 0 0;
-            --color-primary-hover: 75 85 99;
-            --color-danger: 0 0 0;
-            --blue-50: 243 244 246;
-            --blue-100: 229 231 235;
-            --blue-200: 156 163 175;
-            --danger-bg: 249 250 251;
-            --danger-border: 229 231 235;
-            --radius: 0px;
-            --row-py: 0.5rem;
-            --scroll-thumb: #d1d5db;
-            --scroll-hover: #9ca3af;
+            --bg-brand: 255 255 255; --bg-main: 255 255 255; --slate-50: 249 250 251; --slate-100: 243 244 246;
+            --slate-200: 229 231 235; --slate-300: 209 213 219; --slate-400: 156 163 175; --slate-500: 107 114 128;
+            --slate-600: 75 85 99; --slate-700: 55 65 81; --slate-800: 17 24 39; --slate-900: 0 0 0;
+            --color-primary: 0 0 0; --color-primary-hover: 75 85 99; --color-danger: 0 0 0;
+            --blue-50: 243 244 246; --blue-100: 229 231 235; --blue-200: 156 163 175; --danger-bg: 249 250 251;
+            --danger-border: 229 231 235; --radius: 0px; --row-py: 0.5rem; --scroll-thumb: #d1d5db; --scroll-hover: #9ca3af;
         }
         [data-theme="hn"] {
-            --bg-brand: 246 246 239;
-            --bg-main: 246 246 239;
-            --slate-50: 255 255 255;
-            --slate-100: 226 226 226;
-            --slate-200: 210 210 210;
-            --slate-300: 180 180 180;
-            --slate-400: 130 130 130;
-            --slate-500: 130 130 130;
-            --slate-600: 100 100 100;
-            --slate-700: 50 50 50;
-            --slate-800: 0 0 0;
-            --slate-900: 0 0 0;
-            --color-primary: 255 102 0;
-            --color-primary-hover: 255 119 0;
-            --color-danger: 204 0 0;
-            --blue-50: 255 255 214;
-            --blue-100: 226 226 226;
-            --blue-200: 200 200 200;
-            --danger-bg: 255 255 214;
-            --danger-border: 204 0 0;
-            --radius: 0px;
-            --row-py: 0.25rem;
-            --font-sans: Verdana, Geneva, sans-serif;
-            --scroll-thumb: #ff9955;
-            --scroll-hover: #ff6600;
+            --bg-brand: 246 246 239; --bg-main: 246 246 239; --slate-50: 255 255 255; --slate-100: 226 226 226;
+            --slate-200: 210 210 210; --slate-300: 180 180 180; --slate-400: 130 130 130; --slate-500: 130 130 130;
+            --slate-600: 100 100 100; --slate-700: 50 50 50; --slate-800: 0 0 0; --slate-900: 0 0 0;
+            --color-primary: 255 102 0; --color-primary-hover: 255 119 0; --color-danger: 204 0 0;
+            --blue-50: 255 255 214; --blue-100: 226 226 226; --blue-200: 200 200 200; --danger-bg: 255 255 214;
+            --danger-border: 204 0 0; --radius: 0px; --row-py: 0.25rem; --font-sans: Verdana, Geneva, sans-serif;
+            --scroll-thumb: #ff9955; --scroll-hover: #ff6600;
         }
         [data-theme="super-compact"] {
-            --bg-brand: 255 255 255;
-            --bg-main: 255 255 255;
-            --slate-50: 240 240 240;
-            --slate-100: 230 230 230;
-            --slate-200: 200 200 200;
-            --slate-300: 180 180 180;
-            --slate-400: 150 150 150;
-            --slate-500: 100 100 100;
-            --slate-600: 80 80 80;
-            --slate-700: 50 50 50;
-            --slate-800: 20 20 20;
-            --slate-900: 0 0 0;
-            --color-primary: 0 0 0;
-            --color-primary-hover: 50 50 50;
-            --color-danger: 200 0 0;
-            --blue-50: 245 245 245;
-            --blue-100: 230 230 230;
-            --blue-200: 200 200 200;
-            --danger-bg: 255 250 250;
-            --danger-border: 255 250 250;
-            --radius: 0px;
-            --row-py: 0.125rem;
+            --bg-brand: 255 255 255; --bg-main: 255 255 255; --slate-50: 240 240 240; --slate-100: 230 230 230;
+            --slate-200: 200 200 200; --slate-300: 180 180 180; --slate-400: 150 150 150; --slate-500: 100 100 100;
+            --slate-600: 80 80 80; --slate-700: 50 50 50; --slate-800: 20 20 20; --slate-900: 0 0 0;
+            --color-primary: 0 0 0; --color-primary-hover: 50 50 50; --color-danger: 200 0 0;
+            --blue-50: 245 245 245; --blue-100: 230 230 230; --blue-200: 200 200 200; --danger-bg: 255 250 250;
+            --danger-border: 255 250 250; --radius: 0px; --row-py: 0.125rem;
             --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            --scroll-thumb: #ddd;
-            --scroll-hover: #ccc;
+            --scroll-thumb: #ddd; --scroll-hover: #ccc;
         }
 
         /* Super Compact Spacing & Border Overrides */
         [data-theme="super-compact"] .px-4 { padding-left: 0.25rem !important; padding-right: 0.25rem !important; }
         [data-theme="super-compact"] .px-6 { padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
-        [data-theme="super-compact"] .py-3 { padding-top: 0.125rem !important; padding-bottom: 0.125rem !important; }
-        [data-theme="super-compact"] .py-3\.5 { padding-top: 0.125rem !important; padding-bottom: 0.125rem !important; }
+        [data-theme="super-compact"] .py-3, [data-theme="super-compact"] .py-3\.5 { padding-top: 0.125rem !important; padding-bottom: 0.125rem !important; }
         [data-theme="super-compact"] .py-4 { padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; }
         [data-theme="super-compact"] .p-6 { padding: 0.5rem !important; }
         [data-theme="super-compact"] .p-4 { padding: 0.25rem !important; }
-        [data-theme="super-compact"] .p-3 { padding: 0.125rem !important; }
-        [data-theme="super-compact"] .p-2 { padding: 0.125rem !important; }
+        [data-theme="super-compact"] .p-3, [data-theme="super-compact"] .p-2 { padding: 0.125rem !important; }
         [data-theme="super-compact"] .mx-1\.5 { margin-left: 0.125rem !important; margin-right: 0.125rem !important; }
-
-        [data-theme="super-compact"] .gap-3,
-        [data-theme="super-compact"] .gap-4 { gap: 0.125rem !important; }
+        [data-theme="super-compact"] .gap-3, [data-theme="super-compact"] .gap-4 { gap: 0.125rem !important; }
         [data-theme="super-compact"] .gap-5 { gap: 0.25rem !important; }
-
         [data-theme="super-compact"] .mt-6 { margin-top: 0.25rem !important; }
         [data-theme="super-compact"] .mb-6 { margin-bottom: 0.25rem !important; }
-
-        [data-theme="super-compact"] .border,
-        [data-theme="super-compact"] .border-b,
-        [data-theme="super-compact"] .border-t,
-        [data-theme="super-compact"] .border-l,
-        [data-theme="super-compact"] .border-r,
-        [data-theme="super-compact"] .border-2 {
-            border-color: transparent !important;
-        }
-        
-        [data-theme="super-compact"] input[type="text"],
-        [data-theme="super-compact"] select {
-            border-bottom: 1px solid #ddd !important;
-        }
-        
-        [data-theme="super-compact"] .shadow-sm,
-        [data-theme="super-compact"] .shadow-md,
-        [data-theme="super-compact"] .shadow-lg,
-        [data-theme="super-compact"] .shadow-xl,
-        [data-theme="super-compact"] .shadow-2xl {
-            box-shadow: none !important;
-        }
-        
-        [data-theme="super-compact"] .absolute.bg-white {
-            border: 1px solid #ccc !important;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
-        }
+        [data-theme="super-compact"] .border, [data-theme="super-compact"] .border-b, [data-theme="super-compact"] .border-t, [data-theme="super-compact"] .border-l, [data-theme="super-compact"] .border-r, [data-theme="super-compact"] .border-2 { border-color: transparent !important; }
+        [data-theme="super-compact"] input[type="text"], [data-theme="super-compact"] select { border-bottom: 1px solid #ddd !important; }
+        [data-theme="super-compact"] .shadow-sm, [data-theme="super-compact"] .shadow-md, [data-theme="super-compact"] .shadow-lg, [data-theme="super-compact"] .shadow-xl, [data-theme="super-compact"] .shadow-2xl { box-shadow: none !important; }
+        [data-theme="super-compact"] .absolute.bg-white { border: 1px solid #ccc !important; box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important; }
 
         body { font-family: var(--font-sans); transition: font-size 0.2s ease-out, background-color 0.3s ease, color 0.3s ease; }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -250,19 +114,9 @@
         ::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--scroll-hover); }
         
-        /* Modal & UI Animations */
-        @keyframes fade-in {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in {
-            animation: fade-in 0.15s ease-out forwards;
-        }
-        /* Print Fallbacks */
-        @media print {
-            body, html { background-color: white !important; }
-            #root { background-color: white !important; }
-        }
+        @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fade-in 0.15s ease-out forwards; }
+        @media print { body, html, #root { background-color: white !important; } }
     </style>
 </head>
 <body class="bg-brandBg text-slate-800 transition-colors duration-200 print:bg-white print:text-black">
@@ -271,7 +125,6 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useCallback, memo, useRef } = React;
 
-        /* --- ASYNC INDEXED-DB WRAPPER --- */
         const idb = {
             dbPromise: new Promise((resolve, reject) => {
                 const req = indexedDB.open('EdgeBandingCache', 1);
@@ -297,7 +150,6 @@
             }
         };
 
-        /* --- CUSTOM HOOKS --- */
         function useDebounce(value, delay) {
             const [debouncedValue, setDebouncedValue] = useState(value);
             useEffect(() => {
@@ -310,29 +162,18 @@
         function useFocusTrap(ref, isActive) {
             useEffect(() => {
                 if (!isActive || !ref.current) return;
-                const focusableElements = ref.current.querySelectorAll(
-                    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-                );
-                if (focusableElements.length === 0) return;
-                
+                const focusableElements = ref.current.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+                if (!focusableElements.length) return;
                 const firstElement = focusableElements[0];
                 const lastElement = focusableElements[focusableElements.length - 1];
-
                 const handleTab = (e) => {
                     if (e.key !== 'Tab') return;
-                    if (e.shiftKey) {
-                        if (document.activeElement === firstElement) {
-                            lastElement.focus();
-                            e.preventDefault();
-                        }
-                    } else {
-                        if (document.activeElement === lastElement) {
-                            firstElement.focus();
-                            e.preventDefault();
-                        }
+                    if (e.shiftKey && document.activeElement === firstElement) {
+                        lastElement.focus(); e.preventDefault();
+                    } else if (!e.shiftKey && document.activeElement === lastElement) {
+                        firstElement.focus(); e.preventDefault();
                     }
                 };
-
                 window.addEventListener('keydown', handleTab);
                 setTimeout(() => firstElement?.focus(), 50); 
                 return () => window.removeEventListener('keydown', handleTab);
@@ -346,25 +187,19 @@
         };
 
         const defaultParts = [
-            { id: '1', code: 'S1-03', name: '24 End Panel LR', material: 'S1-02-51', qty: 1, cutL: 711, cutW: 595, cutT: 18, finalL: 713, finalW: 599, finalT: 18, edges: { step1: '0.4mm - 595', step2: '3mm - 711', step3: '3mm - 711 F', step4: '3mm - 595 A F' }, note: 'Dėmesio: atkreipti dėmesį į tekstūros kryptį frezuojant!' }
+            { id: '1', code: 'S1-03', name: '24 End Panel LR', material: 'S1-02-51', qty: 1, cutL: 711, cutW: 595, cutT: 18, finalL: 713, finalW: 599, finalT: 18, edges: { step1: '0.4mm - 595', step2: '3mm - 711', step3: '3mm - 711 F', step4: '3mm - 595 A F' }, note: 'Dėmesio: atkreipti dėmesį į tekstūros kryptį frezuojant!', _searchStr: 's1-03 24 end panel lr s1-02-51 711 595 18 711x595 595x711 711x595x18 713 599 18 713x599 599x713 713x599x18' }
         ];
 
-        /* --- COMPONENTS --- */
-        const HighlightedText = memo(({ text, highlightTerms }) => {
-            const str = String(text ?? '');
-            if (!highlightTerms || highlightTerms.length === 0) return <>{str}</>;
-            const validTerms = highlightTerms.filter(t => t.trim().length > 0);
-            if (validTerms.length === 0) return <>{str}</>;
-            const sortedTerms = [...validTerms].sort((a, b) => b.length - a.length);
-            const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const regex = new RegExp(`(${sortedTerms.map(escapeRegExp).join('|')})`, 'gi');
+        const HighlightedText = memo(({ text, regex }) => {
+            if (!text) return null;
+            const str = String(text);
+            if (!regex) return <>{str}</>;
             const parts = str.split(regex);
             return (
                 <>
                     {parts.map((part, i) => {
                         if (!part) return null;
-                        const isMatch = sortedTerms.some(term => part.toLowerCase() === term.toLowerCase());
-                        return isMatch ? (
+                        return i % 2 === 1 ? (
                             <mark key={i} className="bg-brandRed/20 text-brandBlue rounded-[3px] px-0.5 font-bold shadow-sm">{part}</mark>
                         ) : (
                             <span key={i}>{part}</span>
@@ -384,21 +219,10 @@
                 </div>
                 {[...Array(6)].map((_, i) => (
                     <div key={i} className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 px-4 py-4 md:py-3 border-b border-slate-100 items-center">
-                        <div className="md:col-span-4 flex justify-between md:block">
-                            <div className="h-5 bg-slate-200 rounded w-2/3"></div>
-                            <div className="h-5 bg-slate-200 rounded-full w-16 md:hidden"></div>
-                        </div>
-                        <div className="md:col-span-3 flex flex-col md:block gap-1">
-                            <div className="h-3 bg-slate-200 rounded w-12 md:hidden"></div>
-                            <div className="h-4 bg-slate-200 rounded w-24"></div>
-                        </div>
-                        <div className="md:col-span-3 flex flex-col md:block gap-1">
-                            <div className="h-3 bg-slate-200 rounded w-12 md:hidden"></div>
-                            <div className="h-4 bg-slate-200 rounded w-24"></div>
-                        </div>
-                        <div className="hidden md:flex md:col-span-2 justify-end">
-                            <div className="h-6 bg-slate-200 rounded-full w-16"></div>
-                        </div>
+                        <div className="md:col-span-4 flex justify-between md:block"><div className="h-5 bg-slate-200 rounded w-2/3"></div><div className="h-5 bg-slate-200 rounded-full w-16 md:hidden"></div></div>
+                        <div className="md:col-span-3 flex flex-col md:block gap-1"><div className="h-3 bg-slate-200 rounded w-12 md:hidden"></div><div className="h-4 bg-slate-200 rounded w-24"></div></div>
+                        <div className="md:col-span-3 flex flex-col md:block gap-1"><div className="h-3 bg-slate-200 rounded w-12 md:hidden"></div><div className="h-4 bg-slate-200 rounded w-24"></div></div>
+                        <div className="hidden md:flex md:col-span-2 justify-end"><div className="h-6 bg-slate-200 rounded-full w-16"></div></div>
                     </div>
                 ))}
             </div>
@@ -415,9 +239,7 @@
                 const matchL = new RegExp('(^|\\D)' + length + '(\\D|$)').test(valNormalized);
                 const matchW = new RegExp('(^|\\D)' + width + '(\\D|$)').test(valNormalized);
                 if (matchW && !matchL) {
-                    boardXDim = width;
-                    boardYDim = length;
-                    isRotated = true;
+                    boardXDim = width; boardYDim = length; isRotated = true;
                 }
             }
             const maxDim = Math.max(boardXDim, boardYDim) || 1;
@@ -433,27 +255,22 @@
             
             steps.forEach((step, idx) => {
                 const valNormalized = step.val.replace(',', '.');
-                const { val } = step;
-                const isThin = val.includes('0.4') || val.includes('0,4');
+                const isThin = valNormalized.includes('0.4');
                 const strokeWidth = isThin ? 2.5 : 6; 
                 const fill = isThin ? "#E5C19E" : "#D4A373";
-                const isRounded = val.toUpperCase().includes('A');
-                const isFluted = val.toUpperCase().includes('F');
+                const isRounded = step.val.toUpperCase().includes('A');
+                const isFluted = step.val.toUpperCase().includes('F');
                 let side = null;
                 const matchX = matchXPattern.test(valNormalized);
                 const matchY = matchYPattern.test(valNormalized);
                 
-                if (idx === 0) {
-                    side = 'bottom';
-                } else if (matchX && !matchY) {
-                    if (!mappedEdges.bottom) side = 'bottom'; else if (!mappedEdges.top) side = 'top';
-                } else if (matchY && !matchX) {
-                    if (!mappedEdges.left) side = 'left'; else if (!mappedEdges.right) side = 'right';
-                } else {
+                if (idx === 0) { side = 'bottom'; } 
+                else if (matchX && !matchY) { if (!mappedEdges.bottom) side = 'bottom'; else if (!mappedEdges.top) side = 'top'; } 
+                else if (matchY && !matchX) { if (!mappedEdges.left) side = 'left'; else if (!mappedEdges.right) side = 'right'; } 
+                else {
                     if (!mappedEdges.bottom) side = 'bottom'; else if (!mappedEdges.top) side = 'top';
                     else if (!mappedEdges.left) side = 'left'; else if (!mappedEdges.right) side = 'right';
                 }
-                
                 if (side) mappedEdges[side] = { ...step, idx, fill, strokeWidth, isRounded, isFluted, side };
             });
             const edgesArray = Object.values(mappedEdges).filter(Boolean).sort((a, b) => a.idx - b.idx);
@@ -476,10 +293,7 @@
                 wantRbl = wantRbl && isThick('bottom') && isThick('left');
                 wantRbr = wantRbr && isThick('bottom') && isThick('right');
             }
-            if (wantRtl) rtl = R;
-            if (wantRtr) rtr = R;
-            if (wantRbl) rbl = R;
-            if (wantRbr) rbr = R;
+            if (wantRtl) rtl = R; if (wantRtr) rtr = R; if (wantRbl) rbl = R; if (wantRbr) rbr = R;
             
             const boardPathD = `M ${x + rtl} ${y} L ${x + scaledX - rtr} ${y} A ${rtr} ${rtr} 0 0 1 ${x + scaledX} ${y + rtr} L ${x + scaledX} ${y + scaledY - rbr} A ${rbr} ${rbr} 0 0 1 ${x + scaledX - rbr} ${y + scaledY} L ${x + rbl} ${y + scaledY} A ${rbl} ${rbl} 0 0 1 ${x} ${y + scaledY - rbl} L ${x} ${y + rtl} A ${rtl} ${rtl} 0 0 1 ${x + rtl} ${y} Z`;
             
@@ -491,9 +305,7 @@
                             <pattern id={`wood-grain-${clipId}`} width="100" height="20" patternUnits="userSpaceOnUse" patternTransform={isRotated ? "rotate(90)" : ""}>
                                 <path d="M0,2 Q25,0 50,2 T100,2 M0,6 Q25,8 50,6 T100,6 M0,10 Q25,9 50,10 T100,10" fill="none" stroke="currentColor" strokeWidth="0.4" opacity="0.4" />
                             </pattern>
-                            <clipPath id={`board-clip-${clipId}`}>
-                                <path d={boardPathD} style={{ transition: 'd 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' }} />
-                            </clipPath>
+                            <clipPath id={`board-clip-${clipId}`}><path d={boardPathD} style={{ transition: 'd 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' }} /></clipPath>
                         </defs>
                         <g clipPath={`url(#board-clip-${clipId})`}>
                             <rect x={x} y={y} width={scaledX} height={scaledY} fill="rgb(var(--slate-200))" />
@@ -518,18 +330,11 @@
                                         const offset = center + (i * spacing);
                                         let lx1, ly1, lx2, ly2;
                                         if (edge.side === 'top' || edge.side === 'bottom') {
-                                            lx1 = bx + actualInset; lx2 = bx + bwr - actualInset;
-                                            ly1 = ly2 = by + offset;
+                                            lx1 = bx + actualInset; lx2 = bx + bwr - actualInset; ly1 = ly2 = by + offset;
                                         } else {
-                                            lx1 = lx2 = bx + offset;
-                                            ly1 = by + actualInset; ly2 = by + bhr - actualInset;
+                                            lx1 = lx2 = bx + offset; ly1 = by + actualInset; ly2 = by + bhr - actualInset;
                                         }
-                                        return (
-                                            <line 
-                                                key={i} x1={lx1} y1={ly1} x2={lx2} y2={ly2}
-                                                stroke="#451a03" strokeWidth="0.6" opacity="0.75"
-                                            />
-                                        );
+                                        return <line key={i} x1={lx1} y1={ly1} x2={lx2} y2={ly2} stroke="#451a03" strokeWidth="0.6" opacity="0.75" />;
                                     });
                                 };
                                 return (
@@ -561,9 +366,7 @@
             
             useEffect(() => {
                 if (steps.length === 0) return;
-                const interval = setInterval(() => {
-                    setVisibleCount(prev => (prev > steps.length ? 0 : prev + 1));
-                }, 800);
+                const interval = setInterval(() => setVisibleCount(prev => (prev > steps.length ? 0 : prev + 1)), 800);
                 return () => clearInterval(interval);
             }, [steps.length]);
 
@@ -587,20 +390,16 @@
                             <div className="flex-1 bg-white p-3 rounded-lg border border-slate-200 text-center shadow-sm">
                                 <span className="block text-[0.625rem] text-slate-500 font-bold uppercase tracking-wider mb-2">{t.cutDims}</span>
                                 <div className="flex items-center justify-center text-[0.9375rem]">
-                                    <span className="text-slate-800 font-bold">{part.cutL}</span>
-                                    <span className="mx-1.5 text-slate-300 text-xs">×</span>
-                                    <span className="text-slate-800 font-bold">{part.cutW}</span>
-                                    <span className="mx-1.5 text-slate-300 text-xs">×</span>
+                                    <span className="text-slate-800 font-bold">{part.cutL}</span><span className="mx-1.5 text-slate-300 text-xs">×</span>
+                                    <span className="text-slate-800 font-bold">{part.cutW}</span><span className="mx-1.5 text-slate-300 text-xs">×</span>
                                     <span className="text-slate-500 font-semibold">{part.cutT}</span>
                                 </div>
                             </div>
                             <div className="flex-1 bg-blue-50/40 p-3 rounded-lg border border-blue-100/60 text-center shadow-sm">
                                 <span className="block text-[0.625rem] text-brandBlue/80 font-bold uppercase tracking-wider mb-2">{t.finalDims}</span>
                                 <div className="flex items-center justify-center text-[0.9375rem]">
-                                    <span className="text-brandBlue font-bold">{part.finalL}</span>
-                                    <span className="mx-1.5 text-blue-200/80 text-xs">×</span>
-                                    <span className="text-brandBlue font-bold">{part.finalW}</span>
-                                    <span className="mx-1.5 text-blue-200/80 text-xs">×</span>
+                                    <span className="text-brandBlue font-bold">{part.finalL}</span><span className="mx-1.5 text-blue-200/80 text-xs">×</span>
+                                    <span className="text-brandBlue font-bold">{part.finalW}</span><span className="mx-1.5 text-blue-200/80 text-xs">×</span>
                                     <span className="text-brandBlue/70 font-semibold">{part.finalT}</span>
                                 </div>
                             </div>
@@ -615,11 +414,7 @@
                             {steps.length > 0 ? (
                                 <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
                                     <div className="grid grid-cols-[1.75rem_2fr_2fr_minmax(3rem,1fr)_minmax(3rem,1fr)] gap-2 md:gap-3 bg-slate-50/80 px-3 md:px-4 py-2.5 border-b border-slate-100 text-[0.5625rem] md:text-[0.625rem] font-bold text-slate-500 uppercase tracking-wider items-center">
-                                        <div className="text-center">#</div>
-                                        <div>{t.thickness}</div>
-                                        <div>{t.dimension}</div>
-                                        <div className="text-center truncate" title={t.roundedCol}>{t.roundedCol}</div>
-                                        <div className="text-center truncate" title={t.flutedCol}>{t.flutedCol}</div>
+                                        <div className="text-center">#</div><div>{t.thickness}</div><div>{t.dimension}</div><div className="text-center truncate">{t.roundedCol}</div><div className="text-center truncate">{t.flutedCol}</div>
                                     </div>
                                     <div className="divide-y divide-slate-100 flex-grow flex flex-col justify-center">
                                         {steps.map((s, idx) => {
@@ -633,40 +428,23 @@
                                             let thickness = '-', dimension = '-';
                                             let isRounded = false, isFluted = false;
                                             
-                                            const extractFeatures = (str) => {
-                                                const tokens = str.toUpperCase().split(/\s+/);
-                                                const hasA = tokens.includes('A') || tokens.includes('AF') || tokens.includes('FA');
-                                                const hasF = tokens.includes('F') || tokens.includes('AF') || tokens.includes('FA');
-                                                const dim = str.replace(/\bA\b/ig, '')
-                                                               .replace(/\bF\b/ig, '')
-                                                               .replace(/\bAF\b/ig, '')
-                                                               .replace(/\bFA\b/ig, '')
-                                                               .trim();
-                                                return { hasA, hasF, dim };
-                                            };
-                                            
                                             if (valParts.length > 1) {
                                                 thickness = valParts[0].trim();
-                                                const detailsStr = valParts.slice(1).join(' - ');
-                                                const parsed = extractFeatures(detailsStr);
-                                                isRounded = parsed.hasA;
-                                                isFluted = parsed.hasF;
-                                                dimension = parsed.dim;
+                                                const detailsStr = valParts.slice(1).join(' - ').toUpperCase();
+                                                isRounded = /\bA\b|\bAF\b|\bFA\b/.test(detailsStr);
+                                                isFluted = /\bF\b|\bAF\b|\bFA\b/.test(detailsStr);
+                                                dimension = detailsStr.replace(/\b(A|F|AF|FA)\b/g, '').trim();
                                             } else {
-                                                const parsed = extractFeatures(s.val);
-                                                isRounded = parsed.hasA;
-                                                isFluted = parsed.hasF;
-                                                dimension = parsed.dim;
+                                                const sUpper = s.val.toUpperCase();
+                                                isRounded = /\bA\b|\bAF\b|\bFA\b/.test(sUpper);
+                                                isFluted = /\bF\b|\bAF\b|\bFA\b/.test(sUpper);
+                                                dimension = sUpper.replace(/\b(A|F|AF|FA)\b/g, '').trim();
                                             }
                                             
                                             return (
                                                 <div key={idx} className={`grid grid-cols-[1.75rem_2fr_2fr_minmax(3rem,1fr)_minmax(3rem,1fr)] gap-2 md:gap-3 px-3 md:px-4 py-3 items-center transition-all duration-200 ${bgClass} ${textClass}`}>
-                                                    <div className={`flex items-center justify-center w-7 h-7 rounded-full text-xs transition-all duration-200 ${numClass}`}>
-                                                        {s.seq}
-                                                    </div>
-                                                    <div className={`text-sm ${isActive ? 'font-bold' : 'font-medium'}`}>
-                                                        {thickness}
-                                                    </div>
+                                                    <div className={`flex items-center justify-center w-7 h-7 rounded-full text-xs transition-all duration-200 ${numClass}`}>{s.seq}</div>
+                                                    <div className={`text-sm ${isActive ? 'font-bold' : 'font-medium'}`}>{thickness}</div>
                                                     <div className={`text-[0.9375rem] flex items-center ${isActive ? 'font-bold text-brandBlue' : 'font-medium'}`}>
                                                         {dimension}
                                                         {isCurrent && (
@@ -676,29 +454,15 @@
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <div className="flex justify-center">
-                                                        {isRounded ? (
-                                                            <svg className={`w-5 h-5 transition-colors ${isCurrent ? 'text-brandBlue' : (isActive ? 'text-emerald-500' : 'text-slate-300')}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
-                                                        ) : (
-                                                            <span className="text-slate-300/50 font-bold">-</span>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex justify-center">
-                                                        {isFluted ? (
-                                                            <svg className={`w-5 h-5 transition-colors ${isCurrent ? 'text-brandBlue' : (isActive ? 'text-emerald-500' : 'text-slate-300')}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
-                                                        ) : (
-                                                            <span className="text-slate-300/50 font-bold">-</span>
-                                                        )}
-                                                    </div>
+                                                    <div className="flex justify-center">{isRounded ? <svg className={`w-5 h-5 transition-colors ${isCurrent ? 'text-brandBlue' : (isActive ? 'text-emerald-500' : 'text-slate-300')}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg> : <span className="text-slate-300/50 font-bold">-</span>}</div>
+                                                    <div className="flex justify-center">{isFluted ? <svg className={`w-5 h-5 transition-colors ${isCurrent ? 'text-brandBlue' : (isActive ? 'text-emerald-500' : 'text-slate-300')}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg> : <span className="text-slate-300/50 font-bold">-</span>}</div>
                                                 </div>
                                             );
                                         })}
                                     </div>
                                 </div>
                             ) : (
-                                <div className="bg-slate-50/50 border border-slate-200/80 rounded-lg flex-grow flex items-center justify-center min-h-[100px]">
-                                    <span className="text-sm font-semibold text-slate-400">-</span>
-                                </div>
+                                <div className="bg-slate-50/50 border border-slate-200/80 rounded-lg flex-grow flex items-center justify-center min-h-[100px]"><span className="text-sm font-semibold text-slate-400">-</span></div>
                             )}
                         </div>
                         
@@ -713,25 +477,23 @@
                         )}
                         
                         <div className="mt-2 text-center">
-                            <button onClick={onClose} className="w-full py-2 bg-brandBlue hover:bg-brandHover hover:scale-[1.02] shadow-sm text-white rounded-md transition-all font-semibold text-sm">
-                                {t.close}
-                            </button>
+                            <button onClick={onClose} className="w-full py-2 bg-brandBlue hover:bg-brandHover hover:scale-[1.02] shadow-sm text-white rounded-md transition-all font-semibold text-sm">{t.close}</button>
                         </div>
                     </div>
                 </div>
             );
         };
 
-        const GridRow = memo(({ part, onClick, t, searchTerms }) => (
+        const GridRow = memo(({ part, onClick, t, searchRegex }) => (
             <div onClick={() => onClick(part)} tabIndex="0" onKeyDown={(e) => e.key === 'Enter' && onClick(part)} 
                 className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 px-4 py-3.5 items-center border-b border-slate-100 last:border-0 hover:bg-slate-50/80 focus:bg-slate-50 focus:ring-2 focus:ring-inset focus:ring-brandBlue/50 outline-none cursor-pointer transition-all duration-200 print:border-b-black print:border-dashed print:py-2 print:gap-1 group">
                 
                 <div className="md:col-span-4 flex justify-between items-start md:block pl-1">
                     <span className="text-[0.9375rem] md:text-base font-semibold text-slate-800 group-hover:text-brandBlue transition-colors print:text-black">
-                        <HighlightedText text={part.name} highlightTerms={searchTerms} />
+                        <HighlightedText text={part.name} regex={searchRegex} />
                     </span>
                     <span className="md:hidden bg-white text-slate-600 border border-slate-200 text-[0.625rem] font-bold px-2 py-0.5 rounded-md shadow-sm print:bg-transparent print:border-none print:p-0 print:text-black">
-                        <HighlightedText text={part.code} highlightTerms={searchTerms} />
+                        <HighlightedText text={part.code} regex={searchRegex} />
                     </span>
                 </div>
                 
@@ -739,46 +501,29 @@
                     <div className="md:col-span-3 flex flex-col md:block justify-center">
                         <span className="md:hidden text-slate-400 text-[0.5625rem] font-bold uppercase tracking-wider mb-0.5 print:hidden">{t.cutting}</span>
                         <div className="flex items-center text-[0.8125rem] md:text-sm">
-                            <span className="text-slate-700 font-medium">
-                                <HighlightedText text={part.cutL} highlightTerms={searchTerms} />
-                            </span>
-                            <span className="mx-1.5 text-slate-300 text-xs">×</span>
-                            <span className="text-slate-700 font-medium">
-                                <HighlightedText text={part.cutW} highlightTerms={searchTerms} />
-                            </span>
-                            <span className="mx-1.5 text-slate-300 text-xs">×</span>
-                            <span className="text-slate-500">
-                                <HighlightedText text={part.cutT} highlightTerms={searchTerms} />
-                            </span>
+                            <span className="text-slate-700 font-medium"><HighlightedText text={part.cutL} regex={searchRegex} /></span><span className="mx-1.5 text-slate-300 text-xs">×</span>
+                            <span className="text-slate-700 font-medium"><HighlightedText text={part.cutW} regex={searchRegex} /></span><span className="mx-1.5 text-slate-300 text-xs">×</span>
+                            <span className="text-slate-500"><HighlightedText text={part.cutT} regex={searchRegex} /></span>
                         </div>
                     </div>
                     <div className="md:col-span-3 flex flex-col md:block justify-center">
                         <span className="md:hidden text-brandBlue/70 text-[0.5625rem] font-bold uppercase tracking-wider mb-0.5 print:hidden">{t.final}</span>
                         <div className="flex items-center text-[0.8125rem] md:text-sm bg-blue-50/60 text-brandBlue px-2.5 py-1 rounded-md border border-blue-100/50 w-fit print:border-none print:bg-transparent print:p-0 print:text-black">
-                            <span className="font-bold">
-                                <HighlightedText text={part.finalL} highlightTerms={searchTerms} />
-                            </span>
-                            <span className="mx-1.5 text-blue-200/80 text-xs print:text-black">×</span>
-                            <span className="font-bold">
-                                <HighlightedText text={part.finalW} highlightTerms={searchTerms} />
-                            </span>
-                            <span className="mx-1.5 text-blue-200/80 text-xs print:text-black">×</span>
-                            <span className="font-medium opacity-80">
-                                <HighlightedText text={part.finalT} highlightTerms={searchTerms} />
-                            </span>
+                            <span className="font-bold"><HighlightedText text={part.finalL} regex={searchRegex} /></span><span className="mx-1.5 text-blue-200/80 text-xs print:text-black">×</span>
+                            <span className="font-bold"><HighlightedText text={part.finalW} regex={searchRegex} /></span><span className="mx-1.5 text-blue-200/80 text-xs print:text-black">×</span>
+                            <span className="font-medium opacity-80"><HighlightedText text={part.finalT} regex={searchRegex} /></span>
                         </div>
                     </div>
                 </div>
                 
                 <div className="hidden md:flex md:col-span-2 justify-end pr-1">
                     <span className="bg-white text-slate-600 border border-slate-200 text-xs font-bold px-2.5 py-1 rounded-md shadow-sm group-hover:border-brandBlue/30 group-hover:text-brandBlue transition-colors print:shadow-none print:bg-transparent print:border-none print:p-0 print:text-black">
-                        <HighlightedText text={part.code} highlightTerms={searchTerms} />
+                        <HighlightedText text={part.code} regex={searchRegex} />
                     </span>
                 </div>
             </div>
         ));
 
-        /* 3. Main App Component */
         const App = () => {
             const [lang, setLang] = useState(() => localStorage.getItem('app_lang') || 'lt');
             const t = translations[lang];
@@ -787,21 +532,15 @@
             const [parts, setParts] = useState(defaultParts);
             const [error, setError] = useState(null);
             const [isLoading, setIsLoading] = useState(true);
-            
-            // Replaced simple state with History API managed state
             const [selectedPart, setSelectedPart] = useState(null);
             const selectedPartRef = useRef(null);
-
             const [selectedCollection, setSelectedCollection] = useState(() => localStorage.getItem('app_selectedCollection') || '');
-
             const [renderLimit, setRenderLimit] = useState(50);
             const loaderRef = useRef(null);
             const [textScale, setTextScale] = useState(() => {
-                const saved = localStorage.getItem('app_textScale');
-                return saved ? parseInt(saved, 10) : 100;
+                const saved = localStorage.getItem('app_textScale'); return saved ? parseInt(saved, 10) : 100;
             });
             const [theme, setTheme] = useState(() => localStorage.getItem('app_theme') || 'light');
-            
             const [isSettingsOpen, setIsSettingsOpen] = useState(false);
             const settingsRef = useRef(null);
 
@@ -817,9 +556,7 @@
 
             useEffect(() => {
                 const handleClickOutside = (event) => {
-                    if (settingsRef.current && !settingsRef.current.contains(event.target)) {
-                        setIsSettingsOpen(false);
-                    }
+                    if (settingsRef.current && !settingsRef.current.contains(event.target)) setIsSettingsOpen(false);
                 };
                 document.addEventListener("mousedown", handleClickOutside);
                 return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -827,54 +564,36 @@
 
             useEffect(() => {
                 let finalScale = textScale;
-                if (theme === 'super-compact') {
-                    finalScale = Math.max(50, textScale * 0.85); // Sumažiname fontą dar 15% išlaikant vartotojo nustatymus
-                }
+                if (theme === 'super-compact') finalScale = Math.max(50, textScale * 0.85); 
                 document.documentElement.style.fontSize = `${finalScale}%`;
             }, [textScale, theme]);
 
-            // History API Logic for managing the "Back" button
             const handleOpenPart = useCallback((part) => {
                 window.history.pushState({ step: 'modal' }, '');
-                selectedPartRef.current = part;
-                setSelectedPart(part);
+                selectedPartRef.current = part; setSelectedPart(part);
             }, []);
 
             const handleClosePart = useCallback(() => {
-                selectedPartRef.current = null;
-                setSelectedPart(null);
-                if (window.history.state?.step === 'modal') {
-                    window.history.back();
-                }
+                selectedPartRef.current = null; setSelectedPart(null);
+                if (window.history.state?.step === 'modal') window.history.back();
             }, []);
 
             useEffect(() => {
-                // Saugiklis "Trap" skirtas pagrindiniam puslapiui – jo pagalba fiksuojame antrą back paspaudimą
                 if (!window.history.state || !window.history.state.initialized) {
                     window.history.replaceState({ step: 'trap', initialized: true }, '');
                     window.history.pushState({ step: 'main', initialized: true }, '');
                 }
-
                 const handlePopState = (e) => {
                     if (selectedPartRef.current) {
-                        // Kortelė buvo atidaryta ir paspausta atgal
-                        if (!e.state || e.state.step !== 'modal') {
-                            selectedPartRef.current = null;
-                            setSelectedPart(null);
-                        }
+                        if (!e.state || e.state.step !== 'modal') { selectedPartRef.current = null; setSelectedPart(null); }
                     } else {
-                        // Kortelė uždaryta
-                        if (e.state?.step === 'modal') {
-                            // Jei naudotojas bando eiti pirmyn (forward) į uždarytą kortelę
-                            window.history.back();
-                        } else if (e.state?.step === 'trap') {
-                            // Paspaustas atgal pagrindiniame lange
+                        if (e.state?.step === 'modal') window.history.back();
+                        else if (e.state?.step === 'trap') {
                             const currentLang = localStorage.getItem('app_lang') || 'lt';
                             alert(translations[currentLang]?.exitAlert || "Paspauskite 'Atgal' dar kartą, kad išeitumėte.");
                         }
                     }
                 };
-
                 window.addEventListener('popstate', handlePopState);
                 return () => window.removeEventListener('popstate', handlePopState);
             }, []);
@@ -884,142 +603,119 @@
                     document.body.style.overflow = 'hidden';
                     const handleEsc = (e) => { if (e.key === 'Escape') handleClosePart(); };
                     window.addEventListener('keydown', handleEsc);
-                    return () => {
-                        document.body.style.overflow = 'unset';
-                        window.removeEventListener('keydown', handleEsc);
-                    };
+                    return () => { document.body.style.overflow = 'unset'; window.removeEventListener('keydown', handleEsc); };
                 }
             }, [selectedPart, handleClosePart]);
 
             const parseCSV = useCallback((text) => {
+                const parseDim = (val, def = 0) => {
+                    if (!val) return def;
+                    const parsed = parseFloat(val.toString().replace(',', '.'));
+                    return isNaN(parsed) ? def : parsed;
+                };
+                const formatEdge = (type, len) => {
+                    if (!type || !len) return null;
+                    const tStr = type.trim(), lStr = len.trim();
+                    return (tStr !== '0' && lStr !== '0' && tStr !== '-') ? `${tStr} - ${lStr}` : null;
+                };
                 Papa.parse(text, {
-                    header: false,
-                    skipEmptyLines: true,
+                    header: false, skipEmptyLines: true,
                     complete: (results) => {
                         try {
-                            if (!results.data || results.data.length === 0) throw new Error(t.errEmpty);
-                            
-                            const parseDim = (val, def = 0) => {
-                                if (!val) return def;
-                                const parsed = parseFloat(val.toString().replace(',', '.'));
-                                return isNaN(parsed) ? def : parsed;
-                            };
+                            if (!results.data?.length) throw new Error(t.errEmpty);
                             const newParts = [];
-                            results.data.forEach((cols, i) => {
-                                const strictCheckDim = cols[5] ? parseFloat(cols[5].toString().replace(',', '.')) : NaN;
-                                if (cols.length < 10 || isNaN(strictCheckDim)) return;
-                                const formatEdge = (type, len) => {
-                                    if (!type || !len) return null;
-                                    const tStr = type.trim(), lStr = len.trim();
-                                    return (tStr !== '0' && lStr !== '0' && tStr !== '-') ? `${tStr} - ${lStr}` : null;
-                                };
+                            for (let i = 0; i < results.data.length; i++) {
+                                const cols = results.data[i];
+                                const rawCutL = cols[5];
+                                if (!rawCutL) continue;
+                                const strictCheckDim = parseFloat(rawCutL.toString().replace(',', '.'));
+                                if (cols.length < 10 || isNaN(strictCheckDim)) continue;
+                                
+                                const cutL = parseDim(rawCutL, 0); const cutW = parseDim(cols[6], 0); const cutT = parseDim(cols[7], 18);
+                                const finalL = parseDim(cols[8], 0); const finalW = parseDim(cols[9], 0); const finalT = parseDim(cols[10], 18);
+                                const code = cols[1] || '-'; const name = cols[2] || `Detalė ${i}`; const material = cols[3] || 'Nenurodyta';
+                                
+                                const _searchStr = `${code} ${name} ${material} ${cutL} ${cutW} ${cutT} ${cutL}x${cutW} ${cutW}x${cutL} ${cutL}x${cutW}x${cutT} ${finalL} ${finalW} ${finalT} ${finalL}x${finalW} ${finalW}x${finalL} ${finalL}x${finalW}x${finalT}`.toLowerCase();
+
                                 newParts.push({
-                                    id: `item-${i}-${Date.now()}`,
-                                    code: cols[1] || '-',
-                                    name: cols[2] || `Detalė ${i}`,
-                                    material: cols[3] || 'Nenurodyta',
-                                    qty: parseInt(cols[4]) || 1,
-                                    cutL: parseDim(cols[5], 0),
-                                    cutW: parseDim(cols[6], 0),
-                                    cutT: parseDim(cols[7], 18),
-                                    finalL: parseDim(cols[8], 0),
-                                    finalW: parseDim(cols[9], 0),
-                                    finalT: parseDim(cols[10], 18),
+                                    id: `item-${i}-${Date.now()}`, code, name, material,
+                                    qty: parseInt(cols[4]) || 1, cutL, cutW, cutT, finalL, finalW, finalT,
                                     edges: {
-                                        step1: formatEdge(cols[11], cols[12]),
-                                        step2: formatEdge(cols[13], cols[14]),
-                                        step3: formatEdge(cols[15], cols[16]),
-                                        step4: formatEdge(cols[17], cols[18])
+                                        step1: formatEdge(cols[11], cols[12]), step2: formatEdge(cols[13], cols[14]),
+                                        step3: formatEdge(cols[15], cols[16]), step4: formatEdge(cols[17], cols[18])
                                     },
-                                    note: cols[19] ? cols[19].trim() : ''
+                                    note: cols[19] ? cols[19].trim() : '', _searchStr
                                 });
-                            });
-                            if (newParts.length > 0) {
-                                setParts(newParts);
-                                setError(null);
-                            } else {
-                                setError(t.errParse);
                             }
-                        } catch (err) {
-                            setError(t.errRead);
-                            console.error(err);
-                        }
+                            if (newParts.length > 0) { setParts(newParts); setError(null); } 
+                            else { setError(t.errParse); }
+                        } catch (err) { setError(t.errRead); console.error(err); }
                     },
-                    error: (err) => {
-                        setError(t.errParse);
-                        console.error("PapaParse Error:", err);
-                    }
+                    error: (err) => { setError(t.errParse); console.error("PapaParse Error:", err); }
                 });
             }, [t]);
 
             useEffect(() => {
                 let isMounted = true;
-                const CACHE_KEY = 'cached_parts_csv_v4';
                 const fetchOnlineCSV = async () => {
                     try {
-                        const localData = await idb.get(CACHE_KEY);
-                        if (localData && isMounted) {
-                            parseCSV(localData);
-                            setIsLoading(false);
-                        } else if (isMounted) {
-                            setIsLoading(true);
-                        }
+                        const localData = await idb.get('cached_parts_csv_v4');
+                        if (localData && isMounted) { parseCSV(localData); setIsLoading(false); } 
+                        else if (isMounted) setIsLoading(true);
+                        
                         const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQSHJJdOhsNzRuq-WmcCS1SFCUqvRlYFYU9I9rs1LL9zlJ8AQWzwB3l_1PY67wbnHxhTDTi5VrC1jRq/pub?gid=1947074840&single=true&output=csv";
                         const response = await fetch(url);
                         if (!response.ok) throw new Error(response.statusText);
-                        
                         const remoteText = await response.text();
-                        
                         if (remoteText !== localData) {
-                            await idb.set(CACHE_KEY, remoteText);
+                            await idb.set('cached_parts_csv_v4', remoteText);
                             if (isMounted) parseCSV(remoteText);
                         }
-                    } catch (err) {
-                        console.error("Fetch Error:", err);
-                        if (isMounted && isLoading) setError(translations[lang].errFetch);
-                    } finally {
-                        if (isMounted) setIsLoading(false);
-                    }
+                    } catch (err) { if (isMounted && isLoading) setError(translations[lang].errFetch); } 
+                    finally { if (isMounted) setIsLoading(false); }
                 };
                 fetchOnlineCSV();
                 return () => { isMounted = false; };
             }, [parseCSV, lang]);
 
-            const activeSearchTerms = useMemo(() => {
+            const searchRegex = useMemo(() => {
                 const baseTerms = debouncedSearchTerm.toLowerCase().trim().split(/\s+/).filter(Boolean);
-                const expandedTerms = new Set();
-                baseTerms.forEach(term => {
-                    expandedTerms.add(term);
-                    if (term.includes('x')) {
-                        term.split('x').forEach(sub => {
-                            if (sub) expandedTerms.add(sub);
-                        });
+                if (!baseTerms.length) return null;
+                const expanded = new Set(baseTerms);
+                for(let i = 0; i < baseTerms.length; i++) {
+                    if (baseTerms[i].includes('x')) {
+                        const p = baseTerms[i].split('x');
+                        if (p[0]) expanded.add(p[0]); if (p[1]) expanded.add(p[1]);
                     }
-                });
-                return Array.from(expandedTerms);
+                }
+                const sortedTerms = Array.from(expanded).sort((a, b) => b.length - a.length);
+                const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                return new RegExp(`(${sortedTerms.map(escapeRegExp).join('|')})`, 'gi');
             }, [debouncedSearchTerm]);
 
             const collections = useMemo(() => {
-                const unique = new Set(parts.map(p => p.code).filter(c => c && c !== '-'));
+                const unique = new Set();
+                for (let i = 0; i < parts.length; i++) {
+                    if (parts[i].code && parts[i].code !== '-') unique.add(parts[i].code);
+                }
                 return Array.from(unique).sort(new Intl.Collator(lang).compare);
             }, [parts, lang]);
 
-            // Clear collection if it no longer exists after data reload
             useEffect(() => {
-                if (selectedCollection && collections.length > 0 && !collections.includes(selectedCollection)) {
-                    setSelectedCollection('');
-                }
+                if (selectedCollection && collections.length > 0 && !collections.includes(selectedCollection)) setSelectedCollection('');
             }, [collections, selectedCollection]);
 
             const filteredParts = useMemo(() => {
                 const searchLower = debouncedSearchTerm.toLowerCase().trim();
-                const searchTerms = searchLower.split(/\s+/);
+                if (!searchLower && !selectedCollection) return parts;
+                const searchTerms = searchLower.split(/\s+/).filter(Boolean);
+                
                 return parts.filter(p => {
                     if (selectedCollection && p.code !== selectedCollection) return false;
-                    
-                    if (!searchLower) return true;
-                    const str = `${p.code} ${p.name} ${p.material} ${p.cutL} ${p.cutW} ${p.cutT} ${p.cutL}x${p.cutW} ${p.cutW}x${p.cutL} ${p.cutL}x${p.cutW}x${p.cutT} ${p.finalL} ${p.finalW} ${p.finalT} ${p.finalL}x${p.finalW} ${p.finalW}x${p.finalL} ${p.finalL}x${p.finalW}x${p.finalT}`.toLowerCase();
-                    return searchTerms.every(term => str.includes(term));
+                    for (let i = 0; i < searchTerms.length; i++) {
+                        if (!p._searchStr.includes(searchTerms[i])) return false;
+                    }
+                    return true;
                 });
             }, [parts, debouncedSearchTerm, selectedCollection]);
 
@@ -1029,20 +725,15 @@
 
             useEffect(() => {
                 if (isLoading || visibleParts.length >= filteredParts.length) return;
-                const observer = new IntersectionObserver(
-                    (entries) => { if (entries[0].isIntersecting) setRenderLimit(prev => prev + 50); },
-                    { rootMargin: '200px' }
-                );
+                const observer = new IntersectionObserver((entries) => { if (entries[0].isIntersecting) setRenderLimit(prev => prev + 50); }, { rootMargin: '200px' });
                 if (loaderRef.current) observer.observe(loaderRef.current);
                 return () => observer.disconnect();
             }, [isLoading, visibleParts.length, filteredParts.length]);
 
             return (
                 <div className="min-h-screen pb-12 transition-colors duration-200">
-                    
                     <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm print:hidden">
                         <div className="max-w-6xl mx-auto px-4 py-3 sm:py-4 flex items-center justify-between gap-4">
-                            
                             <div className="flex items-center shrink-0">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14">
                                     <g fill="none" stroke="currentColor" className="text-brandRed" strokeWidth="6" strokeLinejoin="round" strokeLinecap="round">
@@ -1051,41 +742,21 @@
                                     </g>
                                 </svg>
                             </div>
-                            
                             <div className="flex-1 max-w-4xl relative flex flex-col sm:flex-row gap-2 sm:gap-3">
                                 <div className="relative flex-1 flex items-center">
                                     <svg className="w-5 h-5 sm:w-6 sm:h-6 text-slate-400 absolute left-3 sm:left-4 z-10 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                                    <input 
-                                        type="text"
-                                        inputMode="decimal"
-                                        placeholder={t.search} 
-                                        className="w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-2 sm:py-3 md:py-3.5 text-sm sm:text-base border-2 border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-4 focus:ring-brandRed/20 focus:border-brandRed outline-none text-slate-800 transition-all shadow-sm placeholder:text-slate-400"
-                                        value={searchTerm} 
-                                        onChange={(e) => setSearchTerm(e.target.value)} 
-                                    />
+                                    <input type="text" inputMode="decimal" placeholder={t.search} className="w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-2 sm:py-3 md:py-3.5 text-sm sm:text-base border-2 border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-4 focus:ring-brandRed/20 focus:border-brandRed outline-none text-slate-800 transition-all shadow-sm placeholder:text-slate-400" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                                     {searchTerm && (
-                                        <button
-                                            onClick={() => setSearchTerm('')}
-                                            className="absolute right-2 sm:right-3 p-1.5 text-slate-400 hover:text-brandRed hover:bg-brandRed/10 rounded-full transition-colors focus:outline-none"
-                                            aria-label={t.clearSearch}
-                                            title={t.clearSearch}
-                                        >
+                                        <button onClick={() => setSearchTerm('')} className="absolute right-2 sm:right-3 p-1.5 text-slate-400 hover:text-brandRed hover:bg-brandRed/10 rounded-full transition-colors focus:outline-none" aria-label={t.clearSearch} title={t.clearSearch}>
                                             <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                                         </button>
                                     )}
                                 </div>
-                                
                                 {collections.length > 0 && (
                                     <div className="relative shrink-0 sm:w-48 md:w-56 flex items-center">
-                                        <select
-                                            value={selectedCollection}
-                                            onChange={(e) => setSelectedCollection(e.target.value)}
-                                            className="w-full h-full pl-3 pr-10 py-2 sm:py-3 md:py-3.5 text-sm sm:text-base border-2 border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-4 focus:ring-brandRed/20 focus:border-brandRed outline-none text-slate-800 transition-all shadow-sm appearance-none cursor-pointer truncate"
-                                        >
+                                        <select value={selectedCollection} onChange={(e) => setSelectedCollection(e.target.value)} className="w-full h-full pl-3 pr-10 py-2 sm:py-3 md:py-3.5 text-sm sm:text-base border-2 border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-4 focus:ring-brandRed/20 focus:border-brandRed outline-none text-slate-800 transition-all shadow-sm appearance-none cursor-pointer truncate">
                                             <option value="">{t.allCollections}</option>
-                                            {collections.map(c => (
-                                                <option key={c} value={c}>{c}</option>
-                                            ))}
+                                            {collections.map(c => <option key={c} value={c}>{c}</option>)}
                                         </select>
                                         <div className="absolute right-3 pointer-events-none text-slate-400">
                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
@@ -1093,14 +764,8 @@
                                     </div>
                                 )}
                             </div>
-                            
                             <div className="relative flex items-center shrink-0" ref={settingsRef}>
-                                <button 
-                                    onClick={() => setIsSettingsOpen(!isSettingsOpen)} 
-                                    className={`p-2 md:p-2.5 rounded-xl transition-all shadow-sm border ${isSettingsOpen ? 'bg-slate-100 text-brandBlue border-slate-300' : 'text-slate-600 hover:text-brandBlue hover:bg-slate-50 border-slate-200'}`}
-                                    aria-label={t.settings}
-                                    title={t.settings}
-                                >
+                                <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} className={`p-2 md:p-2.5 rounded-xl transition-all shadow-sm border ${isSettingsOpen ? 'bg-slate-100 text-brandBlue border-slate-300' : 'text-slate-600 hover:text-brandBlue hover:bg-slate-50 border-slate-200'}`} aria-label={t.settings} title={t.settings}>
                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -1109,7 +774,6 @@
                                 {isSettingsOpen && (
                                     <div className="absolute top-full right-0 mt-3 w-64 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50 animate-fade-in origin-top-right">
                                         <div className="p-5 flex flex-col gap-4">
-                                            
                                             <div>
                                                 <span className="block text-[0.625rem] font-bold text-slate-400 uppercase tracking-wider mb-2.5">{t.language}</span>
                                                 <div className="flex items-center gap-3">
@@ -1119,7 +783,6 @@
                                                 </div>
                                             </div>
                                             <div className="w-full h-px bg-slate-100"></div>
-                                            
                                             <div>
                                                 <span className="block text-[0.625rem] font-bold text-slate-400 uppercase tracking-wider mb-2.5">{t.textSize}</span>
                                                 <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200 shadow-inner w-fit">
@@ -1129,7 +792,6 @@
                                                 </div>
                                             </div>
                                             <div className="w-full h-px bg-slate-100"></div>
-                                            
                                             <div>
                                                 <span className="block text-[0.625rem] font-bold text-slate-400 uppercase tracking-wider mb-2.5">{t.theme}</span>
                                                 <div className="flex flex-col gap-1.5">
@@ -1141,7 +803,6 @@
                                                 </div>
                                             </div>
                                             <div className="w-full h-px bg-slate-100"></div>
-                                            
                                             <div>
                                                 <a href="https://docs.google.com/spreadsheets/d/1dmgyXAz_ZEbjI5P5P6MbiwaSTIY6KesygqZ-6gvvvs8/edit?gid=1947074840#gid=1947074840" target="_blank" rel="noopener noreferrer" className="cursor-pointer bg-brandRed hover:bg-red-600 hover:scale-105 text-white py-2.5 px-4 rounded-lg shadow-md transition-all text-sm font-bold flex items-center justify-center gap-2 w-full">
                                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
@@ -1154,9 +815,7 @@
                             </div>
                         </div>
                     </header>
-                    
                     <div className="sticky top-0 md:top-0 z-20 bg-brandRed h-1 shadow-sm print:hidden"></div>
-                    
                     <main className="max-w-6xl mx-auto px-4 mt-6">
                         {error && (
                             <div className="mb-6 p-4 bg-white border-l-4 border-brandRed text-slate-800 rounded-md shadow-sm flex items-center gap-3 print:hidden">
@@ -1175,20 +834,12 @@
                             </div>
                         ) : (
                             <div className="bg-white p-2 rounded-md border border-slate-200 shadow-sm overflow-hidden print:p-0 print:border-none print:shadow-none print:bg-transparent">
-                                
                                 <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-3 bg-slate-50/50 border-b border-slate-200 text-[0.625rem] font-bold text-slate-500 uppercase tracking-wider print:grid print:border-b-2 print:border-black print:text-black print:bg-transparent">
-                                    <div className="col-span-4 pl-1">{t.name}</div>
-                                    <div className="col-span-3">{t.cutting}</div>
-                                    <div className="col-span-3">{t.final}</div>
-                                    <div className="col-span-2 text-right pr-1">{t.collection}</div>
+                                    <div className="col-span-4 pl-1">{t.name}</div><div className="col-span-3">{t.cutting}</div><div className="col-span-3">{t.final}</div><div className="col-span-2 text-right pr-1">{t.collection}</div>
                                 </div>
-                                
                                 <div className="flex flex-col print:gap-0">
-                                    {visibleParts.map(part => (
-                                        <GridRow key={part.id} part={part} onClick={handleOpenPart} t={t} searchTerms={activeSearchTerms} />
-                                    ))}
+                                    {visibleParts.map(part => <GridRow key={part.id} part={part} onClick={handleOpenPart} t={t} searchRegex={searchRegex} />)}
                                 </div>
-                                
                                 {visibleParts.length < filteredParts.length && (
                                     <div ref={loaderRef} className="p-4 flex justify-center print:hidden">
                                         <svg className="animate-spin h-5 w-5 text-brandBlue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -1200,7 +851,6 @@
                             </div>
                         )}
                     </main>
-
                     {selectedPart && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 print:hidden" role="dialog" aria-modal="true">
                             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-fade-in" onClick={handleClosePart}></div>
