@@ -580,18 +580,13 @@
 
             useEffect(() => {
                 if (!window.history.state || !window.history.state.initialized) {
-                    window.history.replaceState({ step: 'trap', initialized: true }, '');
-                    window.history.pushState({ step: 'main', initialized: true }, '');
+                    window.history.replaceState({ step: 'main', initialized: true }, '');
                 }
                 const handlePopState = (e) => {
                     if (selectedPartRef.current) {
                         if (!e.state || e.state.step !== 'modal') { selectedPartRef.current = null; setSelectedPart(null); }
                     } else {
                         if (e.state?.step === 'modal') window.history.back();
-                        else if (e.state?.step === 'trap') {
-                            const currentLang = localStorage.getItem('app_lang') || 'lt';
-                            alert(translations[currentLang]?.exitAlert || "Paspauskite 'Atgal' dar kartą, kad išeitumėte.");
-                        }
                     }
                 };
                 window.addEventListener('popstate', handlePopState);
