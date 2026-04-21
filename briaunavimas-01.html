@@ -1,288 +1,960 @@
 <!DOCTYPE html>
-<html lang="lt">
+<html lang="lt" class="transition-colors duration-200">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Detalių Briaunavimas</title>
-
-<style>
-/* =====================
-   NHS-STYLE BASE
-===================== */
-
-body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    background: #f0f4f5;
-    color: #212b32;
-}
-
-.container {
-    max-width: 720px;
-    margin: 0 auto;
-    padding: 16px;
-}
-
-/* Header */
-.header {
-    background: #005eb8;
-    color: white;
-    padding: 16px;
-    font-size: 20px;
-    font-weight: bold;
-}
-
-/* Input */
-input {
-    width: 100%;
-    padding: 10px;
-    border: 2px solid #4c6272;
-    font-size: 16px;
-    margin-bottom: 16px;
-}
-
-/* Button */
-button {
-    background: #005eb8;
-    color: white;
-    border: none;
-    padding: 10px 14px;
-    cursor: pointer;
-}
-
-button:hover {
-    background: #003f8c;
-}
-
-/* Card list */
-.card {
-    background: white;
-    padding: 12px;
-    border: 1px solid #d8dde0;
-    margin-bottom: 10px;
-    cursor: pointer;
-}
-
-.card:focus {
-    outline: 3px solid #ffdd00;
-}
-
-/* Modal */
-.modal {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.modal-box {
-    background: white;
-    padding: 20px;
-    max-width: 400px;
-    width: 90%;
-}
-
-/* Status */
-.status {
-    margin: 10px 0;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalių Briaunavimas</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brandBg: '#d9e8e8',
+                        brandBlue: '#264A68',
+                        brandHover: '#203b53',
+                        brandRed: '#ef3b46'
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX compilation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- PapaParse for high-performance CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
+    <style>
+        body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; transition: font-size 0.2s ease-out; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        html.dark ::-webkit-scrollbar-thumb { background: #475569; }
+        html.dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        
+        /* Modal & UI Animations */
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fade-in 0.15s ease-out forwards;
+        }
+        /* Print Fallbacks */
+        @media print {
+            body, html { background-color: white !important; }
+            #root { background-color: white !important; }
+        }
+    </style>
 </head>
+<body class="bg-brandBg text-slate-800 transition-colors duration-200 print:bg-white print:text-black">
+    <div id="root"></div>
 
-<body>
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useCallback, memo, useRef } = React;
 
-<div class="header">Detalių Briaunavimas</div>
-
-<div class="container">
-
-<input id="search" placeholder="Ieškoti..." />
-
-<div id="status" class="status"></div>
-
-<div id="list"></div>
-
-<button id="loadMore" hidden>Load more</button>
-
-</div>
-
-<!-- Modal -->
-<div id="modal" hidden class="modal" role="dialog" aria-modal="true">
-    <div class="modal-box">
-        <h2 id="modalTitle"></h2>
-        <p id="modalBody"></p>
-        <button id="closeModal">Uždaryti</button>
-    </div>
-</div>
-
-<script>
-/* =====================
-   STATE
-===================== */
-
-let parts = [];
-let filtered = [];
-let visibleCount = 50;
-
-/* =====================
-   ELEMENTS
-===================== */
-
-const searchEl = document.getElementById('search');
-const listEl = document.getElementById('list');
-const statusEl = document.getElementById('status');
-const loadMoreBtn = document.getElementById('loadMore');
-
-const modal = document.getElementById('modal');
-const modalTitle = document.getElementById('modalTitle');
-const modalBody = document.getElementById('modalBody');
-const closeModal = document.getElementById('closeModal');
-
-/* =====================
-   CSV PARSE
-===================== */
-
-function parseCSV(text) {
-    const rows = text.split('\n');
-
-    const result = [];
-
-    rows.forEach((row, i) => {
-        const c = row.split(',');
-
-        if (c.length < 10) return;
-
-        const cutL = Number(c[5]);
-        if (!Number.isFinite(cutL)) return;
-
-        result.push({
-            id: i,
-            name: c[2] || 'Detalė',
-            code: c[1] || '-',
-            cutL: Number(c[5]) || 0,
-            cutW: Number(c[6]) || 0
-        });
-    });
-
-    return result;
-}
-
-/* =====================
-   RENDER
-===================== */
-
-function render() {
-    listEl.innerHTML = '';
-
-    const visible = filtered.slice(0, visibleCount);
-
-    visible.forEach(p => {
-        const div = document.createElement('div');
-        div.className = 'card';
-        div.tabIndex = 0;
-
-        div.textContent = `${p.name} (${p.code})`;
-
-        div.onclick = () => openModal(p);
-        div.onkeydown = e => {
-            if (e.key === 'Enter') openModal(p);
+        /* --- ASYNC INDEXED-DB WRAPPER --- */
+        const idb = {
+            dbPromise: new Promise((resolve, reject) => {
+                const req = indexedDB.open('EdgeBandingCache', 1);
+                req.onupgradeneeded = e => e.target.result.createObjectStore('csvStore');
+                req.onsuccess = e => resolve(e.target.result);
+                req.onerror = e => reject(e.target.error);
+            }),
+            async get(key) {
+                const db = await this.dbPromise;
+                return new Promise((res, rej) => {
+                    const req = db.transaction('csvStore', 'readonly').objectStore('csvStore').get(key);
+                    req.onsuccess = () => res(req.result);
+                    req.onerror = () => rej(req.error);
+                });
+            },
+            async set(key, val) {
+                const db = await this.dbPromise;
+                return new Promise((res, rej) => {
+                    const req = db.transaction('csvStore', 'readwrite').objectStore('csvStore').put(val, key);
+                    req.onsuccess = () => res();
+                    req.onerror = () => rej(req.error);
+                });
+            }
         };
 
-        listEl.appendChild(div);
-    });
-
-    loadMoreBtn.hidden = visible.length >= filtered.length;
-
-    statusEl.textContent = `${filtered.length} rezultatų`;
-}
-
-/* =====================
-   FILTER
-===================== */
-
-function applyFilter() {
-    const s = searchEl.value.toLowerCase();
-
-    filtered = parts.filter(p =>
-        (p.name + ' ' + p.code).toLowerCase().includes(s)
-    );
-
-    visibleCount = 50;
-    render();
-}
-
-/* =====================
-   MODAL
-===================== */
-
-function openModal(p) {
-    modalTitle.textContent = p.name;
-    modalBody.textContent = `${p.cutL} x ${p.cutW}`;
-    modal.hidden = false;
-    document.body.style.overflow = 'hidden';
-}
-
-function closeModalFn() {
-    modal.hidden = true;
-    document.body.style.overflow = 'auto';
-}
-
-/* =====================
-   EVENTS
-===================== */
-
-searchEl.addEventListener('input', applyFilter);
-
-loadMoreBtn.onclick = () => {
-    visibleCount += 50;
-    render();
-};
-
-closeModal.onclick = closeModalFn;
-modal.onclick = e => {
-    if (e.target === modal) closeModalFn();
-};
-
-/* =====================
-   FETCH (WITH CACHE)
-===================== */
-
-async function loadData() {
-    const CACHE_KEY = 'csv_cache_v1';
-
-    try {
-        const cached = localStorage.getItem(CACHE_KEY);
-
-        if (cached) {
-            parts = parseCSV(cached);
-            filtered = parts;
-            render();
+        /* --- CUSTOM HOOKS --- */
+        function useDebounce(value, delay) {
+            const [debouncedValue, setDebouncedValue] = useState(value);
+            useEffect(() => {
+                const handler = setTimeout(() => setDebouncedValue(value), delay);
+                return () => clearTimeout(handler);
+            }, [value, delay]);
+            return debouncedValue;
         }
 
-        const res = await fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vQSHJJdOhsNzRuq-WmcCS1SFCUqvRlYFYU9I9rs1LL9zlJ8AQWzwB3l_1PY67wbnHxhTDTi5VrC1jRq/pub?gid=1947074840&single=true&output=csv");
-        const text = await res.text();
+        function useFocusTrap(ref, isActive) {
+            useEffect(() => {
+                if (!isActive || !ref.current) return;
+                const focusableElements = ref.current.querySelectorAll(
+                    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+                );
+                if (focusableElements.length === 0) return;
+                
+                const firstElement = focusableElements[0];
+                const lastElement = focusableElements[focusableElements.length - 1];
 
-        if (text !== cached) {
-            localStorage.setItem(CACHE_KEY, text);
-            parts = parseCSV(text);
-            filtered = parts;
-            render();
+                const handleTab = (e) => {
+                    if (e.key !== 'Tab') return;
+                    if (e.shiftKey) {
+                        if (document.activeElement === firstElement) {
+                            lastElement.focus();
+                            e.preventDefault();
+                        }
+                    } else {
+                        if (document.activeElement === lastElement) {
+                            firstElement.focus();
+                            e.preventDefault();
+                        }
+                    }
+                };
+
+                window.addEventListener('keydown', handleTab);
+                setTimeout(() => firstElement?.focus(), 50); 
+                return () => window.removeEventListener('keydown', handleTab);
+            }, [isActive, ref]);
         }
 
-    } catch {
-        statusEl.textContent = 'Klaida kraunant duomenis';
-    }
-}
+        const translations = {
+            lt: { title: "Briaunavimas", search: "Ieškoti (pavadinimas, kodas, matmenys)...", clearSearch: "Išvalyti paiešką", uploadDesktop: "Įkelti CSV", uploadMobile: "Įkelti", loading: "Apdorojama...", noPartsTitle: "Nerasta jokių detalių", noPartsDesc: "Pabandykite pakeisti paieškos kriterijus arba įkelkite tinkamo formato CSV failą.", listTitle: "Detalių sąrašas", showing: (x, y) => `Rodoma ${x} iš ${y} detalių`, collection: "Kolekcija", name: "Pavadinimas", cutting: "Pjovimo matmuo", final: "Galutinis matmuo", pcs: "vnt.", cutDims: "Pjovimo matmenys", finalDims: "Galutiniai matmenys", bandingSeq: "Briaunavimo eiga", step: "žingsnis", close: "Uždaryti", errEmpty: "Failas tuščias.", errParse: "Nepavyko nuskaityti duomenų. Patikrinkite CSV formatą.", errRead: "Įvyko klaida skaitant failą.", errFetch: "Nepavyko gauti duomenų iš interneto. Rodomi pavyzdiniai duomenys.", notes: "Pastabos", editData: "Duomenų redagavimas", rounded: "apvalinta", fluted: "fluted", thickness: "Storis", dimension: "Kraštinė", roundedCol: "Apvalinta", flutedCol: "Fluted", settings: "Nustatymai", language: "Kalba", textSize: "Teksto dydis", exitAlert: "Paspauskite 'Atgal' dar kartą, kad išeitumėte iš programos." },
+            en: { title: "Edge Banding", search: "Search (name, code, dimensions)...", clearSearch: "Clear search", uploadDesktop: "Upload CSV", uploadMobile: "Upload", loading: "Processing...", noPartsTitle: "No parts found", noPartsDesc: "Try changing the search criteria or upload a valid CSV file.", listTitle: "Parts List", showing: (x, y) => `Showing ${x} of ${y} parts`, collection: "Collection", name: "Name", cutting: "Cutting Dim.", final: "Final Dim.", pcs: "pcs.", cutDims: "Cutting dimensions", finalDims: "Final dimensions", bandingSeq: "Edge banding sequence", step: "step", close: "Close", errEmpty: "File is empty.", errParse: "Failed to parse data. Please check CSV format.", errRead: "Error reading file.", errFetch: "Failed to fetch data from the internet. Showing sample data.", notes: "Notes", editData: "Data Edit", rounded: "rounded", fluted: "fluted", thickness: "Thickness", dimension: "Dimension", roundedCol: "Rounded", flutedCol: "Fluted", settings: "Settings", language: "Language", textSize: "Text Size", exitAlert: "Press 'Back' again to exit the app." },
+            uk: { title: "Кромкування", search: "Пошук (назва, код, розміри)...", clearSearch: "Очистити пошук", uploadDesktop: "Завантажити CSV", uploadMobile: "Завантаж.", loading: "Обробка...", noPartsTitle: "Деталей не знайдено", noPartsDesc: "Спробуйте змінити критерії пошуку або завантажте дійсний файл CSV.", listTitle: "Список деталей", showing: (x, y) => `Показано ${x} з ${y} деталей`, collection: "Колекція", name: "Назва", cutting: "Розмір порізки", final: "Кінцевий розмір", pcs: "шт.", cutDims: "Розміри порізки", finalDims: "Кінцеві розміри", bandingSeq: "Послідовність кромкування", step: "крок", close: "Закрити", errEmpty: "Файл порожній.", errParse: "Не вдалося прочитати дані. Перевірте формат CSV.", errRead: "Помилка читання файлу.", errFetch: "Не вдалося отримати дані з Інтернету. Показано зразки даних.", notes: "Примітки", editData: "Редагування даних", rounded: "заокруглена", fluted: "фрезерована", thickness: "Товщина", dimension: "Розмір", roundedCol: "Заокруг.", flutedCol: "Фрезер.", settings: "Налаштування", language: "Мова", textSize: "Розмір тексту", exitAlert: "Натисніть 'Назад' ще раз, щоб вийти з програми." }
+        };
 
-/* =====================
-   INIT
-===================== */
+        const defaultParts = [
+            { id: '1', code: 'S1-03', name: '24 End Panel LR', material: 'S1-02-51', qty: 1, cutL: 711, cutW: 595, cutT: 18, finalL: 713, finalW: 599, finalT: 18, edges: { step1: '0.4mm - 595', step2: '3mm - 711', step3: '3mm - 711 F', step4: '3mm - 595 A F' }, note: 'Dėmesio: atkreipti dėmesį į tekstūros kryptį frezuojant!' }
+        ];
 
-loadData();
+        /* --- COMPONENTS --- */
+        const HighlightedText = memo(({ text, highlightTerms }) => {
+            const str = String(text ?? '');
+            if (!highlightTerms || highlightTerms.length === 0) return <>{str}</>;
+            const validTerms = highlightTerms.filter(t => t.trim().length > 0);
+            if (validTerms.length === 0) return <>{str}</>;
+            const sortedTerms = [...validTerms].sort((a, b) => b.length - a.length);
+            const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`(${sortedTerms.map(escapeRegExp).join('|')})`, 'gi');
+            const parts = str.split(regex);
+            return (
+                <>
+                    {parts.map((part, i) => {
+                        if (!part) return null;
+                        const isMatch = sortedTerms.some(term => part.toLowerCase() === term.toLowerCase());
+                        return isMatch ? (
+                            <mark key={i} className="bg-brandRed/20 text-brandBlue rounded-[3px] px-0.5 font-bold shadow-sm">{part}</mark>
+                        ) : (
+                            <span key={i}>{part}</span>
+                        );
+                    })}
+                </>
+            );
+        });
 
-</script>
+        const SkeletonGrid = memo(() => (
+            <div className="bg-white p-2 rounded-md border border-slate-200 shadow-sm overflow-hidden animate-pulse">
+                <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-3 border-b border-slate-200">
+                    <div className="col-span-4 h-4 bg-slate-200 rounded w-1/3"></div>
+                    <div className="col-span-3 h-4 bg-slate-200 rounded w-1/2"></div>
+                    <div className="col-span-3 h-4 bg-slate-200 rounded w-1/2"></div>
+                    <div className="col-span-2 h-4 bg-slate-200 rounded w-2/3 ml-auto"></div>
+                </div>
+                {[...Array(6)].map((_, i) => (
+                    <div key={i} className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 px-4 py-4 md:py-3 border-b border-slate-100 items-center">
+                        <div className="md:col-span-4 flex justify-between md:block">
+                            <div className="h-5 bg-slate-200 rounded w-2/3"></div>
+                            <div className="h-5 bg-slate-200 rounded-full w-16 md:hidden"></div>
+                        </div>
+                        <div className="md:col-span-3 flex flex-col md:block gap-1">
+                            <div className="h-3 bg-slate-200 rounded w-12 md:hidden"></div>
+                            <div className="h-4 bg-slate-200 rounded w-24"></div>
+                        </div>
+                        <div className="md:col-span-3 flex flex-col md:block gap-1">
+                            <div className="h-3 bg-slate-200 rounded w-12 md:hidden"></div>
+                            <div className="h-4 bg-slate-200 rounded w-24"></div>
+                        </div>
+                        <div className="hidden md:flex md:col-span-2 justify-end">
+                            <div className="h-6 bg-slate-200 rounded-full w-16"></div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        ));
 
+        const Part2DView = memo(({ length, width, steps, visibleCount, clipId, partName }) => {
+            let boardXDim = length;
+            let boardYDim = width;
+            let isRotated = false;
+            
+            if (steps.length > 0) {
+                const firstStepVal = steps[0].val;
+                const valNormalized = firstStepVal.replace(',', '.');
+                const matchL = new RegExp('(^|\\D)' + length + '(\\D|$)').test(valNormalized);
+                const matchW = new RegExp('(^|\\D)' + width + '(\\D|$)').test(valNormalized);
+                if (matchW && !matchL) {
+                    boardXDim = width;
+                    boardYDim = length;
+                    isRotated = true;
+                }
+            }
+            const maxDim = Math.max(boardXDim, boardYDim) || 1;
+            const scale = 110 / maxDim; 
+            const scaledX = boardXDim * scale;
+            const scaledY = boardYDim * scale;
+            const x = (120 - scaledX) / 2;
+            const y = (120 - scaledY) / 2;
+            
+            const mappedEdges = { top: null, bottom: null, left: null, right: null };
+            const matchXPattern = new RegExp('(^|\\D)' + boardXDim + '(\\D|$)');
+            const matchYPattern = new RegExp('(^|\\D)' + boardYDim + '(\\D|$)');
+            
+            steps.forEach((step, idx) => {
+                const valNormalized = step.val.replace(',', '.');
+                const { val } = step;
+                const isThin = val.includes('0.4') || val.includes('0,4');
+                const strokeWidth = isThin ? 2.5 : 6; 
+                const fill = isThin ? "#E5C19E" : "#D4A373";
+                const isRounded = val.toUpperCase().includes('A');
+                const isFluted = val.toUpperCase().includes('F');
+                let side = null;
+                const matchX = matchXPattern.test(valNormalized);
+                const matchY = matchYPattern.test(valNormalized);
+                
+                if (idx === 0) {
+                    side = 'bottom';
+                } else if (matchX && !matchY) {
+                    if (!mappedEdges.bottom) side = 'bottom'; else if (!mappedEdges.top) side = 'top';
+                } else if (matchY && !matchX) {
+                    if (!mappedEdges.left) side = 'left'; else if (!mappedEdges.right) side = 'right';
+                } else {
+                    if (!mappedEdges.bottom) side = 'bottom'; else if (!mappedEdges.top) side = 'top';
+                    else if (!mappedEdges.left) side = 'left'; else if (!mappedEdges.right) side = 'right';
+                }
+                
+                if (side) mappedEdges[side] = { ...step, idx, fill, strokeWidth, isRounded, isFluted, side };
+            });
+            const edgesArray = Object.values(mappedEdges).filter(Boolean).sort((a, b) => a.idx - b.idx);
+            
+            const isActive = (side) => mappedEdges[side] && mappedEdges[side].idx < visibleCount;
+            const isRounded = (side) => isActive(side) && mappedEdges[side].isRounded;
+            const isThick = (side) => isActive(side) && !mappedEdges[side].val.includes('0.4') && !mappedEdges[side].val.includes('0,4');
+            
+            const R = 8, eps = 0.01; 
+            let rtl = eps, rtr = eps, rbl = eps, rbr = eps;
+            let wantRtl = isRounded('top') || isRounded('left');
+            let wantRtr = isRounded('top') || isRounded('right');
+            let wantRbl = isRounded('bottom') || isRounded('left');
+            let wantRbr = isRounded('bottom') || isRounded('right');
+            
+            const nameHasLR = /(left|right|\blr\b)/i.test(partName || '');
+            if (nameHasLR) {
+                wantRtl = wantRtl && isThick('top') && isThick('left');
+                wantRtr = wantRtr && isThick('top') && isThick('right');
+                wantRbl = wantRbl && isThick('bottom') && isThick('left');
+                wantRbr = wantRbr && isThick('bottom') && isThick('right');
+            }
+            if (wantRtl) rtl = R;
+            if (wantRtr) rtr = R;
+            if (wantRbl) rbl = R;
+            if (wantRbr) rbr = R;
+            
+            const boardPathD = `M ${x + rtl} ${y} L ${x + scaledX - rtr} ${y} A ${rtr} ${rtr} 0 0 1 ${x + scaledX} ${y + rtr} L ${x + scaledX} ${y + scaledY - rbr} A ${rbr} ${rbr} 0 0 1 ${x + scaledX - rbr} ${y + scaledY} L ${x + rbl} ${y + scaledY} A ${rbl} ${rbl} 0 0 1 ${x} ${y + scaledY - rbl} L ${x} ${y + rtl} A ${rtl} ${rtl} 0 0 1 ${x + rtl} ${y} Z`;
+            
+            return (
+                <div className="w-full h-64 bg-slate-50 rounded-md border border-slate-200 overflow-hidden relative flex justify-center items-center transition-colors">
+                    <span className="absolute top-2 left-2 text-[0.625rem] text-slate-400 font-semibold uppercase tracking-wider z-10">Top View</span>
+                    <svg viewBox="0 0 120 120" className="w-full h-full max-w-[280px] max-h-[280px] p-2">
+                        <defs>
+                            <pattern id={`wood-grain-${clipId}`} width="100" height="20" patternUnits="userSpaceOnUse" patternTransform={isRotated ? "rotate(90)" : ""}>
+                                <path d="M0,2 Q25,0 50,2 T100,2 M0,6 Q25,8 50,6 T100,6 M0,10 Q25,9 50,10 T100,10" fill="none" stroke="currentColor" strokeWidth="0.4" opacity="0.4" />
+                            </pattern>
+                            <clipPath id={`board-clip-${clipId}`}>
+                                <path d={boardPathD} style={{ transition: 'd 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' }} />
+                            </clipPath>
+                        </defs>
+                        <g clipPath={`url(#board-clip-${clipId})`}>
+                            <rect x={x} y={y} width={scaledX} height={scaledY} fill="#e2e8f0" />
+                            <rect x={x} y={y} width={scaledX} height={scaledY} fill={`url(#wood-grain-${clipId})`} className="text-slate-400 pointer-events-none" />
+                            {edgesArray.map(edge => {
+                                const isVis = edge.idx < visibleCount;
+                                const bw = edge.strokeWidth;
+                                let bx = x, by = y, bwr = scaledX, bhr = scaledY;
+                                if (edge.side === 'top') { bhr = bw; }
+                                if (edge.side === 'bottom') { by = y + scaledY - bw; bhr = bw; }
+                                if (edge.side === 'left') { bwr = bw; }
+                                if (edge.side === 'right') { bx = x + scaledX - bw; bwr = bw; }
+                                
+                                const renderFlutes = () => {
+                                    if (!edge.isFluted || !isVis) return null;
+                                    const len = edge.side === 'top' || edge.side === 'bottom' ? bwr : bhr;
+                                    const actualInset = Math.min(8, len * 0.15); 
+                                    const spacing = bw * 0.25;
+                                    const center = bw / 2;
+                                    
+                                    return [-1, 0, 1].map(i => {
+                                        const offset = center + (i * spacing);
+                                        let lx1, ly1, lx2, ly2;
+                                        if (edge.side === 'top' || edge.side === 'bottom') {
+                                            lx1 = bx + actualInset; lx2 = bx + bwr - actualInset;
+                                            ly1 = ly2 = by + offset;
+                                        } else {
+                                            lx1 = lx2 = bx + offset;
+                                            ly1 = by + actualInset; ly2 = by + bhr - actualInset;
+                                        }
+                                        return (
+                                            <line 
+                                                key={i} x1={lx1} y1={ly1} x2={lx2} y2={ly2}
+                                                stroke="#451a03" strokeWidth="0.6" opacity="0.75"
+                                            />
+                                        );
+                                    });
+                                };
+                                return (
+                                    <g key={edge.idx} style={{ opacity: isVis ? 1 : 0, transition: 'opacity 0.2s ease-in-out' }}>
+                                        <rect x={bx} y={by} width={bwr} height={bhr} fill={edge.fill} />
+                                        {renderFlutes()}
+                                    </g>
+                                );
+                            })}
+                        </g>
+                        <path d={boardPathD} fill="none" stroke="#cbd5e1" strokeWidth="1.2" style={{ transition: 'd 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' }} className="pointer-events-none" />
+                        <text x="60" y="60" textAnchor="middle" dominantBaseline="middle" fill="#64748b" fontSize="8" fontWeight="bold" opacity="0.6">{length}x{width}</text>
+                    </svg>
+                    <div className="absolute top-1 right-2 text-[0.625rem] text-slate-400 font-mono">{isRotated ? `W = ${width}` : `L = ${length}`}</div>
+                    <div className="absolute bottom-1 left-2 text-[0.625rem] text-slate-400 font-mono" style={{writingMode: 'vertical-rl'}}>{isRotated ? `L = ${length}` : `W = ${width}`}</div>
+                </div>
+            );
+        });
+
+        const PartCard = ({ part, t, onClose }) => {
+            const steps = [
+                { seq: 1, val: part.edges.step1 }, { seq: 2, val: part.edges.step2 },
+                { seq: 3, val: part.edges.step3 }, { seq: 4, val: part.edges.step4 }
+            ].filter(s => s.val);
+            const [visibleCount, setVisibleCount] = useState(0);
+            const modalRef = useRef(null);
+            
+            useFocusTrap(modalRef, true);
+            
+            useEffect(() => {
+                if (steps.length === 0) return;
+                const interval = setInterval(() => {
+                    setVisibleCount(prev => (prev > steps.length ? 0 : prev + 1));
+                }, 800);
+                return () => clearInterval(interval);
+            }, [steps.length]);
+
+            return (
+                <div ref={modalRef} className="bg-white rounded-xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col w-full animate-fade-in">
+                    <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/80 flex justify-between items-start gap-3">
+                        <div className="overflow-hidden">
+                            <h3 className="font-bold text-brandBlue text-xl truncate" title={part.name}>{part.name}</h3>
+                            <p className="text-xs text-slate-500 font-medium mt-1 truncate">{part.code}</p>
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                            <span className="bg-white text-slate-700 border border-slate-200/80 text-xs font-bold px-3 py-1.5 rounded-lg whitespace-nowrap shadow-sm">{part.qty} {t.pcs}</span>
+                            <button onClick={onClose} className="md:hidden text-slate-400 hover:text-brandRed p-1 transition-colors" aria-label={t.close}>
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div className="p-6 flex-grow flex flex-col gap-5">
+                        <div className="flex gap-4">
+                            <div className="flex-1 bg-white p-3 rounded-lg border border-slate-200 text-center shadow-sm">
+                                <span className="block text-[0.625rem] text-slate-500 font-bold uppercase tracking-wider mb-2">{t.cutDims}</span>
+                                <div className="flex items-center justify-center text-[0.9375rem]">
+                                    <span className="text-slate-800 font-bold">{part.cutL}</span>
+                                    <span className="mx-1.5 text-slate-300 text-xs">×</span>
+                                    <span className="text-slate-800 font-bold">{part.cutW}</span>
+                                    <span className="mx-1.5 text-slate-300 text-xs">×</span>
+                                    <span className="text-slate-500 font-semibold">{part.cutT}</span>
+                                </div>
+                            </div>
+                            <div className="flex-1 bg-blue-50/40 p-3 rounded-lg border border-blue-100/60 text-center shadow-sm">
+                                <span className="block text-[0.625rem] text-brandBlue/80 font-bold uppercase tracking-wider mb-2">{t.finalDims}</span>
+                                <div className="flex items-center justify-center text-[0.9375rem]">
+                                    <span className="text-brandBlue font-bold">{part.finalL}</span>
+                                    <span className="mx-1.5 text-blue-200/80 text-xs">×</span>
+                                    <span className="text-brandBlue font-bold">{part.finalW}</span>
+                                    <span className="mx-1.5 text-blue-200/80 text-xs">×</span>
+                                    <span className="text-brandBlue/70 font-semibold">{part.finalT}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="w-full">
+                            <Part2DView length={part.cutL} width={part.cutW} steps={steps} visibleCount={visibleCount} clipId={part.id} partName={part.name} />
+                        </div>
+                        
+                        <div className="flex-grow flex flex-col">
+                            <span className="block text-[0.625rem] text-slate-500 font-bold uppercase tracking-wider mb-2 px-1">{t.bandingSeq}</span>
+                            {steps.length > 0 ? (
+                                <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
+                                    <div className="grid grid-cols-[1.75rem_2fr_2fr_minmax(3rem,1fr)_minmax(3rem,1fr)] gap-2 md:gap-3 bg-slate-50/80 px-3 md:px-4 py-2.5 border-b border-slate-100 text-[0.5625rem] md:text-[0.625rem] font-bold text-slate-500 uppercase tracking-wider items-center">
+                                        <div className="text-center">#</div>
+                                        <div>{t.thickness}</div>
+                                        <div>{t.dimension}</div>
+                                        <div className="text-center truncate" title={t.roundedCol}>{t.roundedCol}</div>
+                                        <div className="text-center truncate" title={t.flutedCol}>{t.flutedCol}</div>
+                                    </div>
+                                    <div className="divide-y divide-slate-100 flex-grow flex flex-col justify-center">
+                                        {steps.map((s, idx) => {
+                                            const isActive = idx < visibleCount;
+                                            const isCurrent = idx === visibleCount - 1;
+                                            const bgClass = isCurrent ? "bg-blue-50/60" : (isActive ? "bg-white" : "bg-slate-50/30");
+                                            const textClass = isActive ? "text-slate-800" : "text-slate-400";
+                                            const numClass = isCurrent ? "bg-brandBlue text-white shadow-md shadow-brandBlue/30 scale-105" : (isActive ? "bg-slate-200 text-slate-700 font-bold" : "bg-white text-slate-400 border border-slate-200");
+                                            
+                                            const valParts = s.val.split(' - ');
+                                            let thickness = '-', dimension = '-';
+                                            let isRounded = false, isFluted = false;
+                                            
+                                            const extractFeatures = (str) => {
+                                                const tokens = str.toUpperCase().split(/\s+/);
+                                                const hasA = tokens.includes('A') || tokens.includes('AF') || tokens.includes('FA');
+                                                const hasF = tokens.includes('F') || tokens.includes('AF') || tokens.includes('FA');
+                                                const dim = str.replace(/\bA\b/ig, '')
+                                                               .replace(/\bF\b/ig, '')
+                                                               .replace(/\bAF\b/ig, '')
+                                                               .replace(/\bFA\b/ig, '')
+                                                               .trim();
+                                                return { hasA, hasF, dim };
+                                            };
+                                            
+                                            if (valParts.length > 1) {
+                                                thickness = valParts[0].trim();
+                                                const detailsStr = valParts.slice(1).join(' - ');
+                                                const parsed = extractFeatures(detailsStr);
+                                                isRounded = parsed.hasA;
+                                                isFluted = parsed.hasF;
+                                                dimension = parsed.dim;
+                                            } else {
+                                                const parsed = extractFeatures(s.val);
+                                                isRounded = parsed.hasA;
+                                                isFluted = parsed.hasF;
+                                                dimension = parsed.dim;
+                                            }
+                                            
+                                            return (
+                                                <div key={idx} className={`grid grid-cols-[1.75rem_2fr_2fr_minmax(3rem,1fr)_minmax(3rem,1fr)] gap-2 md:gap-3 px-3 md:px-4 py-3 items-center transition-all duration-200 ${bgClass} ${textClass}`}>
+                                                    <div className={`flex items-center justify-center w-7 h-7 rounded-full text-xs transition-all duration-200 ${numClass}`}>
+                                                        {s.seq}
+                                                    </div>
+                                                    <div className={`text-sm ${isActive ? 'font-bold' : 'font-medium'}`}>
+                                                        {thickness}
+                                                    </div>
+                                                    <div className={`text-[0.9375rem] flex items-center ${isActive ? 'font-bold text-brandBlue' : 'font-medium'}`}>
+                                                        {dimension}
+                                                        {isCurrent && (
+                                                            <span className="flex h-2 w-2 relative ml-2 shrink-0">
+                                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brandBlue opacity-75"></span>
+                                                                <span className="relative inline-flex rounded-full h-2 w-2 bg-brandBlue"></span>
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex justify-center">
+                                                        {isRounded ? (
+                                                            <svg className={`w-5 h-5 transition-colors ${isCurrent ? 'text-brandBlue' : (isActive ? 'text-emerald-500' : 'text-slate-300')}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+                                                        ) : (
+                                                            <span className="text-slate-300/50 font-bold">-</span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex justify-center">
+                                                        {isFluted ? (
+                                                            <svg className={`w-5 h-5 transition-colors ${isCurrent ? 'text-brandBlue' : (isActive ? 'text-emerald-500' : 'text-slate-300')}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+                                                        ) : (
+                                                            <span className="text-slate-300/50 font-bold">-</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="bg-slate-50/50 border border-slate-200/80 rounded-lg flex-grow flex items-center justify-center min-h-[100px]">
+                                    <span className="text-sm font-semibold text-slate-400">-</span>
+                                </div>
+                            )}
+                        </div>
+                        
+                        {part.note && (
+                            <div className="mt-1 bg-red-50 p-3 rounded-md border border-red-100">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                    <svg className="w-3.5 h-3.5 text-brandRed" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    <span className="block text-[0.625rem] text-brandRed font-semibold uppercase tracking-wider">{t.notes}</span>
+                                </div>
+                                <p className="text-sm text-slate-800 font-medium whitespace-pre-wrap">{part.note}</p>
+                            </div>
+                        )}
+                        
+                        <div className="mt-2 text-center">
+                            <button onClick={onClose} className="w-full py-2 bg-brandBlue hover:bg-brandHover hover:scale-[1.02] shadow-sm text-white rounded-md transition-all font-semibold text-sm">
+                                {t.close}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const GridRow = memo(({ part, onClick, t, searchTerms }) => (
+            <div onClick={() => onClick(part)} tabIndex="0" onKeyDown={(e) => e.key === 'Enter' && onClick(part)} 
+                className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 px-4 py-3.5 items-center border-b border-slate-100 last:border-0 hover:bg-slate-50/80 focus:bg-slate-50 focus:ring-2 focus:ring-inset focus:ring-brandBlue/50 outline-none cursor-pointer transition-all duration-200 print:border-b-black print:border-dashed print:py-2 print:gap-1 group">
+                
+                <div className="md:col-span-4 flex justify-between items-start md:block pl-1">
+                    <span className="text-[0.9375rem] md:text-base font-semibold text-slate-800 group-hover:text-brandBlue transition-colors print:text-black">
+                        <HighlightedText text={part.name} highlightTerms={searchTerms} />
+                    </span>
+                    <span className="md:hidden bg-white text-slate-600 border border-slate-200 text-[0.625rem] font-bold px-2 py-0.5 rounded-md shadow-sm print:bg-transparent print:border-none print:p-0 print:text-black">
+                        <HighlightedText text={part.code} highlightTerms={searchTerms} />
+                    </span>
+                </div>
+                
+                <div className="flex gap-4 md:contents text-sm mt-1.5 md:mt-0">
+                    <div className="md:col-span-3 flex flex-col md:block justify-center">
+                        <span className="md:hidden text-slate-400 text-[0.5625rem] font-bold uppercase tracking-wider mb-0.5 print:hidden">{t.cutting}</span>
+                        <div className="flex items-center text-[0.8125rem] md:text-sm">
+                            <span className="text-slate-700 font-medium">
+                                <HighlightedText text={part.cutL} highlightTerms={searchTerms} />
+                            </span>
+                            <span className="mx-1.5 text-slate-300 text-xs">×</span>
+                            <span className="text-slate-700 font-medium">
+                                <HighlightedText text={part.cutW} highlightTerms={searchTerms} />
+                            </span>
+                            <span className="mx-1.5 text-slate-300 text-xs">×</span>
+                            <span className="text-slate-500">
+                                <HighlightedText text={part.cutT} highlightTerms={searchTerms} />
+                            </span>
+                        </div>
+                    </div>
+                    <div className="md:col-span-3 flex flex-col md:block justify-center">
+                        <span className="md:hidden text-brandBlue/70 text-[0.5625rem] font-bold uppercase tracking-wider mb-0.5 print:hidden">{t.final}</span>
+                        <div className="flex items-center text-[0.8125rem] md:text-sm bg-blue-50/60 text-brandBlue px-2.5 py-1 rounded-md border border-blue-100/50 w-fit print:border-none print:bg-transparent print:p-0 print:text-black">
+                            <span className="font-bold">
+                                <HighlightedText text={part.finalL} highlightTerms={searchTerms} />
+                            </span>
+                            <span className="mx-1.5 text-blue-200/80 text-xs print:text-black">×</span>
+                            <span className="font-bold">
+                                <HighlightedText text={part.finalW} highlightTerms={searchTerms} />
+                            </span>
+                            <span className="mx-1.5 text-blue-200/80 text-xs print:text-black">×</span>
+                            <span className="font-medium opacity-80">
+                                <HighlightedText text={part.finalT} highlightTerms={searchTerms} />
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="hidden md:flex md:col-span-2 justify-end pr-1">
+                    <span className="bg-white text-slate-600 border border-slate-200 text-xs font-bold px-2.5 py-1 rounded-md shadow-sm group-hover:border-brandBlue/30 group-hover:text-brandBlue transition-colors print:shadow-none print:bg-transparent print:border-none print:p-0 print:text-black">
+                        <HighlightedText text={part.code} highlightTerms={searchTerms} />
+                    </span>
+                </div>
+            </div>
+        ));
+
+        /* 3. Main App Component */
+        const App = () => {
+            const [lang, setLang] = useState(() => localStorage.getItem('app_lang') || 'lt');
+            const t = translations[lang];
+            const [searchTerm, setSearchTerm] = useState(() => localStorage.getItem('app_searchTerm') || '');
+            const debouncedSearchTerm = useDebounce(searchTerm, 200);
+            const [parts, setParts] = useState(defaultParts);
+            const [error, setError] = useState(null);
+            const [isLoading, setIsLoading] = useState(true);
+            
+            // Replaced simple state with History API managed state
+            const [selectedPart, setSelectedPart] = useState(null);
+            const selectedPartRef = useRef(null);
+
+            const [renderLimit, setRenderLimit] = useState(50);
+            const loaderRef = useRef(null);
+            const [textScale, setTextScale] = useState(() => {
+                const saved = localStorage.getItem('app_textScale');
+                return saved ? parseInt(saved, 10) : 100;
+            });
+            
+            const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+            const settingsRef = useRef(null);
+
+            useEffect(() => { localStorage.setItem('app_lang', lang); }, [lang]);
+            useEffect(() => { localStorage.setItem('app_searchTerm', searchTerm); }, [searchTerm]);
+            useEffect(() => { localStorage.setItem('app_textScale', textScale.toString()); }, [textScale]);
+
+            useEffect(() => {
+                const handleClickOutside = (event) => {
+                    if (settingsRef.current && !settingsRef.current.contains(event.target)) {
+                        setIsSettingsOpen(false);
+                    }
+                };
+                document.addEventListener("mousedown", handleClickOutside);
+                return () => document.removeEventListener("mousedown", handleClickOutside);
+            }, []);
+
+            useEffect(() => {
+                document.documentElement.style.fontSize = `${textScale}%`;
+            }, [textScale]);
+
+            // History API Logic for managing the "Back" button
+            const handleOpenPart = useCallback((part) => {
+                window.history.pushState({ step: 'modal' }, '');
+                selectedPartRef.current = part;
+                setSelectedPart(part);
+            }, []);
+
+            const handleClosePart = useCallback(() => {
+                selectedPartRef.current = null;
+                setSelectedPart(null);
+                if (window.history.state?.step === 'modal') {
+                    window.history.back();
+                }
+            }, []);
+
+            useEffect(() => {
+                // Saugiklis "Trap" skirtas pagrindiniam puslapiui – jo pagalba fiksuojame antrą back paspaudimą
+                if (!window.history.state || !window.history.state.initialized) {
+                    window.history.replaceState({ step: 'trap', initialized: true }, '');
+                    window.history.pushState({ step: 'main', initialized: true }, '');
+                }
+
+                const handlePopState = (e) => {
+                    if (selectedPartRef.current) {
+                        // Kortelė buvo atidaryta ir paspausta atgal
+                        if (!e.state || e.state.step !== 'modal') {
+                            selectedPartRef.current = null;
+                            setSelectedPart(null);
+                        }
+                    } else {
+                        // Kortelė uždaryta
+                        if (e.state?.step === 'modal') {
+                            // Jei naudotojas bando eiti pirmyn (forward) į uždarytą kortelę
+                            window.history.back();
+                        } else if (e.state?.step === 'trap') {
+                            // Paspaustas atgal pagrindiniame lange
+                            const currentLang = localStorage.getItem('app_lang') || 'lt';
+                            alert(translations[currentLang]?.exitAlert || "Paspauskite 'Atgal' dar kartą, kad išeitumėte.");
+                        }
+                    }
+                };
+
+                window.addEventListener('popstate', handlePopState);
+                return () => window.removeEventListener('popstate', handlePopState);
+            }, []);
+
+            useEffect(() => {
+                if (selectedPart) {
+                    document.body.style.overflow = 'hidden';
+                    const handleEsc = (e) => { if (e.key === 'Escape') handleClosePart(); };
+                    window.addEventListener('keydown', handleEsc);
+                    return () => {
+                        document.body.style.overflow = 'unset';
+                        window.removeEventListener('keydown', handleEsc);
+                    };
+                }
+            }, [selectedPart, handleClosePart]);
+
+            const parseCSV = useCallback((text) => {
+                Papa.parse(text, {
+                    header: false,
+                    skipEmptyLines: true,
+                    complete: (results) => {
+                        try {
+                            if (!results.data || results.data.length === 0) throw new Error(t.errEmpty);
+                            
+                            const parseDim = (val, def = 0) => {
+                                if (!val) return def;
+                                const parsed = parseFloat(val.toString().replace(',', '.'));
+                                return isNaN(parsed) ? def : parsed;
+                            };
+                            const newParts = [];
+                            results.data.forEach((cols, i) => {
+                                const strictCheckDim = cols[5] ? parseFloat(cols[5].toString().replace(',', '.')) : NaN;
+                                if (cols.length < 10 || isNaN(strictCheckDim)) return;
+                                const formatEdge = (type, len) => {
+                                    if (!type || !len) return null;
+                                    const tStr = type.trim(), lStr = len.trim();
+                                    return (tStr !== '0' && lStr !== '0' && tStr !== '-') ? `${tStr} - ${lStr}` : null;
+                                };
+                                newParts.push({
+                                    id: `item-${i}-${Date.now()}`,
+                                    code: cols[1] || '-',
+                                    name: cols[2] || `Detalė ${i}`,
+                                    material: cols[3] || 'Nenurodyta',
+                                    qty: parseInt(cols[4]) || 1,
+                                    cutL: parseDim(cols[5], 0),
+                                    cutW: parseDim(cols[6], 0),
+                                    cutT: parseDim(cols[7], 18),
+                                    finalL: parseDim(cols[8], 0),
+                                    finalW: parseDim(cols[9], 0),
+                                    finalT: parseDim(cols[10], 18),
+                                    edges: {
+                                        step1: formatEdge(cols[11], cols[12]),
+                                        step2: formatEdge(cols[13], cols[14]),
+                                        step3: formatEdge(cols[15], cols[16]),
+                                        step4: formatEdge(cols[17], cols[18])
+                                    },
+                                    note: cols[19] ? cols[19].trim() : ''
+                                });
+                            });
+                            if (newParts.length > 0) {
+                                setParts(newParts);
+                                setError(null);
+                            } else {
+                                setError(t.errParse);
+                            }
+                        } catch (err) {
+                            setError(t.errRead);
+                            console.error(err);
+                        }
+                    },
+                    error: (err) => {
+                        setError(t.errParse);
+                        console.error("PapaParse Error:", err);
+                    }
+                });
+            }, [t]);
+
+            useEffect(() => {
+                let isMounted = true;
+                const CACHE_KEY = 'cached_parts_csv_v4';
+                const fetchOnlineCSV = async () => {
+                    try {
+                        const localData = await idb.get(CACHE_KEY);
+                        if (localData && isMounted) {
+                            parseCSV(localData);
+                            setIsLoading(false);
+                        } else if (isMounted) {
+                            setIsLoading(true);
+                        }
+                        const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQSHJJdOhsNzRuq-WmcCS1SFCUqvRlYFYU9I9rs1LL9zlJ8AQWzwB3l_1PY67wbnHxhTDTi5VrC1jRq/pub?gid=1947074840&single=true&output=csv";
+                        const response = await fetch(url);
+                        if (!response.ok) throw new Error(response.statusText);
+                        
+                        const remoteText = await response.text();
+                        
+                        if (remoteText !== localData) {
+                            await idb.set(CACHE_KEY, remoteText);
+                            if (isMounted) parseCSV(remoteText);
+                        }
+                    } catch (err) {
+                        console.error("Fetch Error:", err);
+                        if (isMounted && isLoading) setError(translations[lang].errFetch);
+                    } finally {
+                        if (isMounted) setIsLoading(false);
+                    }
+                };
+                fetchOnlineCSV();
+                return () => { isMounted = false; };
+            }, [parseCSV, lang]);
+
+            const activeSearchTerms = useMemo(() => {
+                const baseTerms = debouncedSearchTerm.toLowerCase().trim().split(/\s+/).filter(Boolean);
+                const expandedTerms = new Set();
+                baseTerms.forEach(term => {
+                    expandedTerms.add(term);
+                    if (term.includes('x')) {
+                        term.split('x').forEach(sub => {
+                            if (sub) expandedTerms.add(sub);
+                        });
+                    }
+                });
+                return Array.from(expandedTerms);
+            }, [debouncedSearchTerm]);
+
+            const filteredParts = useMemo(() => {
+                const searchLower = debouncedSearchTerm.toLowerCase().trim();
+                if (!searchLower) return parts;
+                
+                const searchTerms = searchLower.split(/\s+/);
+                return parts.filter(p => {
+                    const str = `${p.code} ${p.name} ${p.material} ${p.cutL} ${p.cutW} ${p.cutT} ${p.cutL}x${p.cutW} ${p.cutW}x${p.cutL} ${p.cutL}x${p.cutW}x${p.cutT} ${p.finalL} ${p.finalW} ${p.finalT} ${p.finalL}x${p.finalW} ${p.finalW}x${p.finalL} ${p.finalL}x${p.finalW}x${p.finalT}`.toLowerCase();
+                    return searchTerms.every(term => str.includes(term));
+                });
+            }, [parts, debouncedSearchTerm]);
+
+            useEffect(() => { setRenderLimit(50); }, [debouncedSearchTerm]);
+
+            const visibleParts = useMemo(() => filteredParts.slice(0, renderLimit), [filteredParts, renderLimit]);
+
+            useEffect(() => {
+                if (isLoading || visibleParts.length >= filteredParts.length) return;
+                const observer = new IntersectionObserver(
+                    (entries) => { if (entries[0].isIntersecting) setRenderLimit(prev => prev + 50); },
+                    { rootMargin: '200px' }
+                );
+                if (loaderRef.current) observer.observe(loaderRef.current);
+                return () => observer.disconnect();
+            }, [isLoading, visibleParts.length, filteredParts.length]);
+
+            return (
+                <div className="min-h-screen pb-12 transition-colors duration-200">
+                    
+                    <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm print:hidden">
+                        <div className="max-w-6xl mx-auto px-4 py-3 sm:py-4 flex items-center justify-between gap-4">
+                            
+                            <div className="flex items-center shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14">
+                                    <g fill="none" stroke="rgb(239, 59, 70)" strokeWidth="6" strokeLinejoin="round" strokeLinecap="round">
+                                        <circle cx="40" cy="45" r="12" />
+                                        <path d="M 66.2 55 A 28 28 0 1 0 40 73 L 90 73 L 80 55 Z" />
+                                    </g>
+                                </svg>
+                            </div>
+                            
+                            <div className="flex-1 max-w-3xl relative flex items-center">
+                                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-slate-400 absolute left-3 sm:left-4 z-10 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                <input 
+                                    type="text"
+                                    inputMode="decimal"
+                                    placeholder={t.search} 
+                                    className="w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-2 sm:py-3 md:py-3.5 text-sm sm:text-base border-2 border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-4 focus:ring-brandRed/20 focus:border-brandRed outline-none text-slate-800 transition-all shadow-sm placeholder:text-slate-400"
+                                    value={searchTerm} 
+                                    onChange={(e) => setSearchTerm(e.target.value)} 
+                                />
+                                {searchTerm && (
+                                    <button
+                                        onClick={() => setSearchTerm('')}
+                                        className="absolute right-2 sm:right-3 p-1.5 text-slate-400 hover:text-brandRed hover:bg-brandRed/10 rounded-full transition-colors focus:outline-none"
+                                        aria-label={t.clearSearch}
+                                        title={t.clearSearch}
+                                    >
+                                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                    </button>
+                                )}
+                            </div>
+                            
+                            <div className="relative flex items-center shrink-0" ref={settingsRef}>
+                                <button 
+                                    onClick={() => setIsSettingsOpen(!isSettingsOpen)} 
+                                    className={`p-2 md:p-2.5 rounded-xl transition-all shadow-sm border ${isSettingsOpen ? 'bg-slate-100 text-brandBlue border-slate-300' : 'text-slate-600 hover:text-brandBlue hover:bg-slate-50 border-slate-200'}`}
+                                    aria-label={t.settings}
+                                    title={t.settings}
+                                >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    </svg>
+                                </button>
+                                {isSettingsOpen && (
+                                    <div className="absolute top-full right-0 mt-3 w-64 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50 animate-fade-in origin-top-right">
+                                        <div className="p-5 flex flex-col gap-4">
+                                            
+                                            <div>
+                                                <span className="block text-[0.625rem] font-bold text-slate-400 uppercase tracking-wider mb-2.5">{t.language}</span>
+                                                <div className="flex items-center gap-3">
+                                                    <button onClick={() => setLang('lt')} className={`text-2xl transition-all duration-200 hover:scale-110 ${lang === 'lt' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`} title="Lietuvių">🇱🇹</button>
+                                                    <button onClick={() => setLang('en')} className={`text-2xl transition-all duration-200 hover:scale-110 ${lang === 'en' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`} title="English">🇬🇧</button>
+                                                    <button onClick={() => setLang('uk')} className={`text-2xl transition-all duration-200 hover:scale-110 ${lang === 'uk' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`} title="Українська">🇺🇦</button>
+                                                </div>
+                                            </div>
+                                            <div className="w-full h-px bg-slate-100"></div>
+                                            
+                                            <div>
+                                                <span className="block text-[0.625rem] font-bold text-slate-400 uppercase tracking-wider mb-2.5">{t.textSize}</span>
+                                                <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200 shadow-inner w-fit">
+                                                    <button onClick={() => setTextScale(s => Math.max(70, s - 10))} className="px-3 py-1.5 hover:bg-white rounded-md text-sm font-bold text-slate-700 shadow-sm transition-all" title="Sumažinti tekstą">A-</button>
+                                                    <button onClick={() => setTextScale(100)} className="px-3 py-1.5 hover:bg-white rounded-md text-sm font-bold text-slate-700 shadow-sm transition-all" title="Atstatyti tekstą">A</button>
+                                                    <button onClick={() => setTextScale(s => Math.min(150, s + 10))} className="px-3 py-1.5 hover:bg-white rounded-md text-sm font-bold text-slate-700 shadow-sm transition-all" title="Padidinti tekstą">A+</button>
+                                                </div>
+                                            </div>
+                                            <div className="w-full h-px bg-slate-100"></div>
+                                            
+                                            <div>
+                                                <a href="https://docs.google.com/spreadsheets/d/1dmgyXAz_ZEbjI5P5P6MbiwaSTIY6KesygqZ-6gvvvs8/edit?gid=1947074840#gid=1947074840" target="_blank" rel="noopener noreferrer" className="cursor-pointer bg-brandRed hover:bg-red-600 hover:scale-105 text-white py-2.5 px-4 rounded-lg shadow-md transition-all text-sm font-bold flex items-center justify-center gap-2 w-full">
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                                    <span>{t.editData}</span>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </header>
+                    
+                    <div className="sticky top-0 md:top-0 z-20 bg-brandRed h-1 shadow-sm print:hidden"></div>
+                    
+                    <main className="max-w-6xl mx-auto px-4 mt-6">
+                        {error && (
+                            <div className="mb-6 p-4 bg-white border-l-4 border-brandRed text-slate-800 rounded-md shadow-sm flex items-center gap-3 print:hidden">
+                                <svg className="w-5 h-5 flex-shrink-0 text-brandRed" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <p className="text-sm font-semibold">{error}</p>
+                                <button onClick={() => setError(null)} className="ml-auto text-slate-400 hover:text-brandRed">✕</button>
+                            </div>
+                        )}
+                        {isLoading ? (
+                            <SkeletonGrid />
+                        ) : filteredParts.length === 0 ? (
+                            <div className="text-center py-20 bg-white rounded-md border border-slate-200 shadow-sm print:hidden">
+                                <div className="mx-auto w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4"><svg className="h-8 w-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+                                <h3 className="text-base font-bold text-brandBlue">{t.noPartsTitle}</h3>
+                                <p className="mt-1 text-sm text-slate-500 max-w-sm mx-auto">{t.noPartsDesc}</p>
+                            </div>
+                        ) : (
+                            <div className="bg-white p-2 rounded-md border border-slate-200 shadow-sm overflow-hidden print:p-0 print:border-none print:shadow-none print:bg-transparent">
+                                
+                                <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-3 bg-slate-50/50 border-b border-slate-200 text-[0.625rem] font-bold text-slate-500 uppercase tracking-wider print:grid print:border-b-2 print:border-black print:text-black print:bg-transparent">
+                                    <div className="col-span-4 pl-1">{t.name}</div>
+                                    <div className="col-span-3">{t.cutting}</div>
+                                    <div className="col-span-3">{t.final}</div>
+                                    <div className="col-span-2 text-right pr-1">{t.collection}</div>
+                                </div>
+                                
+                                <div className="flex flex-col print:gap-0">
+                                    {visibleParts.map(part => (
+                                        <GridRow key={part.id} part={part} onClick={handleOpenPart} t={t} searchTerms={activeSearchTerms} />
+                                    ))}
+                                </div>
+                                
+                                {visibleParts.length < filteredParts.length && (
+                                    <div ref={loaderRef} className="p-4 flex justify-center print:hidden">
+                                        <svg className="animate-spin h-5 w-5 text-brandBlue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </main>
+
+                    {selectedPart && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 print:hidden" role="dialog" aria-modal="true">
+                            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-fade-in" onClick={handleClosePart}></div>
+                            <div className="relative w-full max-w-2xl z-10 flex flex-col">
+                                <div className="hidden md:flex justify-end mb-3">
+                                    <button onClick={handleClosePart} className="text-white bg-slate-900/40 hover:bg-brandRed hover:scale-110 rounded-full p-2 backdrop-blur-md transition-all shadow-lg" title={t.close} aria-label={t.close}>
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                    </button>
+                                </div>
+                                <div className="max-h-[85vh] overflow-y-auto rounded-md shadow-2xl">
+                                    <PartCard part={selectedPart} t={t} onClose={handleClosePart} />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
 </body>
 </html>
