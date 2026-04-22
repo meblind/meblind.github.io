@@ -257,7 +257,7 @@
                 const valNormalized = step.val.replace(',', '.');
                 // Accurately extract just the thickness part (before the '-') to avoid bugs with dimensions like '1520,4'
                 const thicknessPart = valNormalized.split('-')[0].trim();
-                const isThin = thicknessPart === '0.4';
+                const isThin = thicknessPart.includes('0.4');
                 const strokeWidth = isThin ? 2.5 : 6; 
                 const fill = isThin ? "#E5C19E" : "#D4A373";
                 const isRounded = step.val.toUpperCase().includes('A');
@@ -283,7 +283,7 @@
             const isThick = (side) => {
                 if (!isActive(side)) return false;
                 const thicknessPart = mappedEdges[side].val.replace(',', '.').split('-')[0].trim();
-                return thicknessPart !== '0.4';
+                return !thicknessPart.includes('0.4');
             };
             
             const R = 8, eps = 0.01; 
