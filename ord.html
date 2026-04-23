@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shipping Order Tracker</title>
+    <!-- Use Tailwind CSS for styling directly in the browser -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for drag and drop interactions */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .card-dragging {
+            opacity: 0.4;
+            transform: scale(0.98);
+        }
+        .column-drag-over {
+            border-color: #60a5fa !important;
+            border-style: dashed !important;
+            background-color: #f0f9ff !important;
+        }
+        .action-btns {
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .order-card:hover .action-btns {
+            opacity: 1;
+        }
+        @media (max-width: 768px) {
+            .action-btns {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans p-4 md:p-8 min-h-screen">
+
+    <!-- Header & Controls -->
+    <div class="max-w-7xl mx-auto mb-8">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                    <!-- Spreadsheet Icon -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-600"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/></svg>
+                    Shipping Order Tracker
+                </h1>
+                <p class="text-slate-500 text-sm mt-1">Upload your Mopacs Inventory CSV to track order statuses locally.</p>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <button onclick="loadDemoData()" class="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
+                    Load Demo Data
+                </button>
+                <button onclick="document.getElementById('fileInput').click()" class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm">
+                    <!-- Upload Icon -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Upload CSV
+                </button>
+                <input type="file" id="fileInput" accept=".csv" class="hidden" onchange="handleFileUpload(event)" />
+            </div>
+        </div>
+
+        <!-- Error Notification (Hidden by default) -->
+        <div id="errorContainer" class="hidden mt-4 flex items-center justify-between bg-red-50 text-red-700 p-4 rounded-xl border border-red-200">
+            <div class="flex items-center gap-2">
+                <!-- Alert Icon -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span id="errorMessage" class="text-sm font-medium"></span>
+            </div>
+            <button onclick="hideError()" class="text-red-500 hover:text-red-700">
+                <!-- X Icon -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Kanban Board -->
+    <div id="boardContainer" class="max-w-7xl mx-auto">
+        <!-- Rendered by JavaScript -->
+    </div>
+
+    <script>
+        // --- State Management ---
+        let orders = [];
+
+        // --- SVG Icons Data ---
+        const icons = {
+            todo: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-500"><circle cx="12" cy="12" r="10"/></svg>`,
+            doing: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-500"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/></svg>`,
+            done: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-500"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
+            grip: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-300 hover:text-slate-400"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>`,
+            left: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>`,
+            right: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`
+        };
+
+        // --- Core Functions ---
+        function renderBoard() {
+            const container = document.getElementById('boardContainer');
+            
+            if (orders.length === 0) {
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center p-12 bg-white rounded-2xl border border-dashed border-slate-300 text-center">
+                        <div class="bg-blue-50 p-4 rounded-full mb-4 text-blue-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/></svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-slate-900">No Data Loaded</h3>
+                        <p class="text-slate-500 mt-2 max-w-md">Upload your inventory CSV file or load the demo data to start tracking your shipping orders.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const columnsData = [
+                { id: 'todo', title: 'To Do', icon: icons.todo, bg: 'bg-slate-100', border: 'border-slate-200' },
+                { id: 'doing', title: 'Doing', icon: icons.doing, bg: 'bg-blue-50/50', border: 'border-blue-200' },
+                { id: 'done', title: 'Done', icon: icons.done, bg: 'bg-emerald-50/50', border: 'border-emerald-200' }
+            ];
+
+            let html = '<div class="grid grid-cols-1 md:grid-cols-3 gap-6">';
+
+            columnsData.forEach(col => {
+                const colOrders = orders.filter(o => o.status === col.id);
+                
+                html += `
+                <div class="flex flex-col rounded-2xl border ${col.border} ${col.bg} overflow-hidden transition-colors"
+                     ondragover="handleDragOver(event)"
+                     ondragleave="handleDragLeave(event)"
+                     ondrop="handleDrop(event, '${col.id}')">
+                    
+                    <div class="p-4 border-b border-black/5 bg-white/50 backdrop-blur-sm flex items-center justify-between">
+                        <h2 class="font-semibold flex items-center gap-2 text-slate-800">
+                            ${col.icon}
+                            ${col.title}
+                        </h2>
+                        <span class="bg-white text-slate-600 text-xs font-bold px-2.5 py-1 rounded-full shadow-sm">${colOrders.length}</span>
+                    </div>
+                    
+                    <div class="flex-1 p-3 flex flex-col gap-3 min-h-[200px] max-h-[70vh] overflow-y-auto hide-scrollbar">
+                `;
+
+                if (colOrders.length === 0) {
+                    html += `<div class="flex-1 flex items-center justify-center text-slate-400 text-sm italic border-2 border-dashed border-transparent rounded-xl pointer-events-none">Drop orders here</div>`;
+                }
+
+                colOrders.forEach(order => {
+                    html += `
+                        <div draggable="true" 
+                             ondragstart="handleDragStart(event, '${escapeHTML(order.id)}')"
+                             ondragend="handleDragEnd(event)"
+                             class="order-card bg-white p-4 rounded-xl shadow-sm border border-slate-200 cursor-grab hover:shadow-md hover:border-slate-300 transition-all">
+                            
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center gap-2">
+                                    ${icons.grip}
+                                    <h3 class="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded text-sm">Order #${escapeHTML(order.id)}</h3>
+                                </div>
+                                
+                                <div class="action-btns flex">
+                                    ${col.id !== 'todo' ? `<button onclick="updateOrderStatus('${escapeHTML(order.id)}', '${col.id === 'done' ? 'doing' : 'todo'}')" class="p-1 text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-l transition-colors" title="Move back">${icons.left}</button>` : ''}
+                                    ${col.id !== 'done' ? `<button onclick="updateOrderStatus('${escapeHTML(order.id)}', '${col.id === 'todo' ? 'doing' : 'done'}')" class="p-1 text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-r transition-colors" title="Move forward">${icons.right}</button>` : ''}
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-2">
+                                ${order.parts.map(part => `
+                                    <div class="text-sm flex justify-between items-center py-1 border-b border-slate-50 last:border-0">
+                                        <div class="flex flex-col">
+                                            <span class="font-medium text-slate-700">${escapeHTML(part.finish)}</span>
+                                            <span class="text-xs text-slate-500">${escapeHTML(part.size)}</span>
+                                        </div>
+                                        <div class="font-semibold text-slate-800 bg-slate-50 px-2 py-1 rounded">x${part.qty}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `</div></div>`;
+            });
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // --- Data Processing ---
+        function parseCSV(text) {
+            const rows = [];
+            let currentRow = [];
+            let currentCell = '';
+            let inQuotes = false;
+
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                if (char === '"' && text[i + 1] === '"') {
+                    currentCell += '"';
+                    i++;
+                } else if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    currentRow.push(currentCell);
+                    currentCell = '';
+                } else if ((char === '\n' || char === '\r') && !inQuotes) {
+                    if (char === '\r' && text[i + 1] === '\n') i++;
+                    currentRow.push(currentCell);
+                    rows.push(currentRow);
+                    currentRow = [];
+                    currentCell = '';
+                } else {
+                    currentCell += char;
+                }
+            }
+            if (currentRow.length || currentCell) {
+                currentRow.push(currentCell);
+                rows.push(currentRow);
+            }
+            return rows;
+        }
+
+        function processData(data) {
+            if (!data || data.length < 2) {
+                showError("The file appears to be empty or invalid.");
+                return;
+            }
+
+            // Find header row containing 'Total'
+            let headerRowIdx = -1;
+            for (let i = 0; i < Math.min(10, data.length); i++) {
+                const rowStr = data[i].join('').toLowerCase();
+                if (rowStr.includes('total') && (rowStr.includes('finish') || rowStr.includes('material') || rowStr.includes('size'))) {
+                    headerRowIdx = i;
+                    break;
+                }
+            }
+
+            if (headerRowIdx === -1) {
+                showError("Could not detect the header row. Make sure your file has a 'Total' column and a 'Finish' or 'Material' column.");
+                return;
+            }
+
+            const headers = data[headerRowIdx];
+            const totalIdx = headers.findIndex(h => h && h.toLowerCase().trim() === 'total');
+
+            if (totalIdx === -1) {
+                showError("Could not find the 'Total' column in the header row.");
+                return;
+            }
+
+            const orderColumns = [];
+            for (let i = totalIdx + 1; i < headers.length; i++) {
+                const val = headers[i] ? headers[i].trim() : '';
+                if (val) {
+                    orderColumns.push({ index: i, name: val });
+                }
+            }
+
+            if (orderColumns.length === 0) {
+                showError("Found the Total column, but couldn't find any shipping order columns after it.");
+                return;
+            }
+
+            const newOrders = [];
+
+            orderColumns.forEach(orderCol => {
+                const parts = [];
+                
+                for (let r = headerRowIdx + 1; r < data.length; r++) {
+                    const row = data[r];
+                    if (!row || row.length <= orderCol.index) continue;
+
+                    const finish = row[0] ? row[0].trim() : '';
+                    const size = row[1] ? row[1].trim() : '';
+                    const dimensions = row[2] ? row[2].trim() : '';
+
+                    if (!finish && !size) continue;
+                    if (finish && finish.length <= 3 && !size) continue; // Skip Roman numerals
+
+                    const qtyStr = row[orderCol.index] ? row[orderCol.index].trim() : '';
+                    const qty = parseInt(qtyStr, 10);
+
+                    if (!isNaN(qty) && qty > 0) {
+                        parts.push({
+                            finish: finish || 'N/A',
+                            size: size || dimensions || 'N/A',
+                            qty: qty
+                        });
+                    }
+                }
+
+                if (parts.length > 0) {
+                    newOrders.push({
+                        id: orderCol.name,
+                        status: 'todo',
+                        parts: parts
+                    });
+                }
+            });
+
+            orders = newOrders;
+            hideError();
+            renderBoard();
+        }
+
+        // --- Event Handlers ---
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                const text = evt.target.result;
+                const parsed = parseCSV(text);
+                processData(parsed);
+            };
+            reader.readAsText(file);
+            e.target.value = ''; // Reset input
+        }
+
+        function loadDemoData() {
+            const demoCSV = `Finish,Size,,Total,8,17,20,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38\n,,,,I,,,,III,IV,I,II,,,,,,IV\nHG White,48x30 R G,1215x758,36,36,,,,,,,,,,,,,,,,,,,\nHG White,60x30 R G,1520x758,260,,,,,,,,,,,,,,36,224,,,,,\nHG White,72x30 R G,1825x758,60,60,,,,,,,,,,,,,,,,,,,\nAsh Gray,30x27.5 L,758x694.5,28,,,,,,,,,,,,,,,,,,,28\nAsh Gray,48x27.5 L,1216x694.5,410,,,,,,,98,,312,,,,,,,,,,\nAsh Gray,80x30 L G,2026x756,102,,,,,,,,,24,,,,42,,,,,,36`;
+            const parsed = parseCSV(demoCSV);
+            processData(parsed);
+        }
+
+        // --- Drag and Drop Logic ---
+        function handleDragStart(e, orderId) {
+            e.dataTransfer.setData('text/plain', orderId);
+            e.target.classList.add('card-dragging');
+        }
+
+        function handleDragEnd(e) {
+            e.target.classList.remove('card-dragging');
+            // Clean up highlight classes if dropped outside
+            document.querySelectorAll('.column-drag-over').forEach(el => el.classList.remove('column-drag-over'));
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault(); // Necessary to allow dropping
+            const column = e.currentTarget;
+            column.classList.add('column-drag-over');
+        }
+
+        function handleDragLeave(e) {
+            const column = e.currentTarget;
+            // Only remove if we are actually leaving the container, not just hovering over a child element
+            if (!column.contains(e.relatedTarget)) {
+                column.classList.remove('column-drag-over');
+            }
+        }
+
+        function handleDrop(e, newStatus) {
+            e.preventDefault();
+            const column = e.currentTarget;
+            column.classList.remove('column-drag-over');
+            
+            const orderId = e.dataTransfer.getData('text/plain');
+            if (orderId) {
+                updateOrderStatus(orderId, newStatus);
+            }
+        }
+
+        // Global update function for buttons and drag/drop
+        window.updateOrderStatus = function(orderId, newStatus) {
+            orders = orders.map(order => 
+                order.id === orderId ? { ...order, status: newStatus } : order
+            );
+            renderBoard();
+        };
+
+        // --- UI Utilities ---
+        function showError(msg) {
+            document.getElementById('errorMessage').textContent = msg;
+            document.getElementById('errorContainer').classList.remove('hidden');
+            setTimeout(hideError, 6000);
+        }
+
+        function hideError() {
+            document.getElementById('errorContainer').classList.add('hidden');
+        }
+
+        function escapeHTML(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // Initialize empty board on load
+        window.onload = renderBoard;
+
+    </script>
+</body>
+</html>
