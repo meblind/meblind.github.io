@@ -90,7 +90,6 @@
             --scroll-thumb: #ddd; --scroll-hover: #ccc;
         }
 
-        /* Super Compact Spacing & Border Overrides */
         [data-theme="super-compact"] .px-4 { padding-left: 0.25rem !important; padding-right: 0.25rem !important; }
         [data-theme="super-compact"] .px-6 { padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
         [data-theme="super-compact"] .py-3, [data-theme="super-compact"] .py-3\.5 { padding-top: 0.125rem !important; padding-bottom: 0.125rem !important; }
@@ -123,8 +122,10 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo, useCallback, memo, useRef } = React;
+        const { useState, useEffect, useMemo, useCallback, memo, useRef, useTransition, startTransition } = React;
 
+        // ─── Utilities ────────────────────────────────────
+        const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const idb = {
             dbPromise: new Promise((resolve, reject) => {
                 const req = indexedDB.open('EdgeBandingCache', 1);
@@ -175,21 +176,23 @@
                     }
                 };
                 window.addEventListener('keydown', handleTab);
-                setTimeout(() => firstElement?.focus(), 50); 
+                setTimeout(() => firstElement?.focus(), 50);
                 return () => window.removeEventListener('keydown', handleTab);
             }, [isActive, ref]);
         }
 
+        // ─── Translations ─────────────────────────────────
         const translations = {
-            lt: { title: "Briaunavimas", search: "Ieškoti (pavadinimas, kodas, matmenys)...", clearSearch: "Išvalyti paiešką", uploadDesktop: "Įkelti CSV", uploadMobile: "Įkelti", loading: "Apdorojama...", noPartsTitle: "Nerasta jokių detalių", noPartsDesc: "Pabandykite pakeisti paieškos kriterijus arba įkelkite tinkamo formato CSV failą.", listTitle: "Detalių sąrašas", showing: (x, y) => `Rodoma ${x} iš ${y} detalių`, collection: "Kolekcija", name: "Pavadinimas", cutting: "Pjovimo matmuo", final: "Galutinis matmuo", pcs: "vnt.", cutDims: "Pjovimo matmenys", finalDims: "Galutiniai matmenys", bandingSeq: "Briaunavimo eiga", step: "žingsnis", close: "Uždaryti", errEmpty: "Failas tuščias.", errParse: "Nepavyko nuskaityti duomenų. Patikrinkite CSV formatą.", errRead: "Įvyko klaida skaitant failą.", errFetch: "Nepavyko gauti duomenų iš interneto. Rodomi pavyzdiniai duomenys.", notes: "Pastabos", editData: "Duomenų redagavimas", rounded: "apvalinta", fluted: "fluted", thickness: "Storis", dimension: "Kraštinė", roundedCol: "Apvalinta", flutedCol: "Fluted", settings: "Nustatymai", language: "Kalba", textSize: "Teksto dydis", exitAlert: "Paspauskite 'Atgal' dar kartą, kad išeitumėte iš programos.", theme: "Tema", themeLight: "Šviesi", themeDark: "Tamsi", themeMinimal: "Minimalistinė", themeHN: "HackerNews", themeSuperCompact: "Itin kompaktiška", allCollections: "Visos kolekcijos" },
-            en: { title: "Edge Banding", search: "Search (name, code, dimensions)...", clearSearch: "Clear search", uploadDesktop: "Upload CSV", uploadMobile: "Upload", loading: "Processing...", noPartsTitle: "No parts found", noPartsDesc: "Try changing the search criteria or upload a valid CSV file.", listTitle: "Parts List", showing: (x, y) => `Showing ${x} of ${y} parts`, collection: "Collection", name: "Name", cutting: "Cutting Dim.", final: "Final Dim.", pcs: "pcs.", cutDims: "Cutting dimensions", finalDims: "Final dimensions", bandingSeq: "Edge banding sequence", step: "step", close: "Close", errEmpty: "File is empty.", errParse: "Failed to parse data. Please check CSV format.", errRead: "Error reading file.", errFetch: "Failed to fetch data from the internet. Showing sample data.", notes: "Notes", editData: "Data Edit", rounded: "rounded", fluted: "fluted", thickness: "Thickness", dimension: "Dimension", roundedCol: "Rounded", flutedCol: "Fluted", settings: "Settings", language: "Language", textSize: "Text Size", exitAlert: "Press 'Back' again to exit the app.", theme: "Theme", themeLight: "Light", themeDark: "Dark", themeMinimal: "Minimalist", themeHN: "HackerNews", themeSuperCompact: "Super Compact", allCollections: "All collections" },
-            uk: { title: "Кромкування", search: "Пошук (назва, код, розміри)...", clearSearch: "Очистити пошук", uploadDesktop: "Завантажити CSV", uploadMobile: "Завантаж.", loading: "Обробка...", noPartsTitle: "Деталей не знайдено", noPartsDesc: "Спробуйте змінити критерії пошуку або завантажте дійсний файл CSV.", listTitle: "Список деталей", showing: (x, y) => `Показано ${x} з ${y} деталей`, collection: "Колекція", name: "Назва", cutting: "Розмір порізки", final: "Кінцевий розмір", pcs: "шт.", cutDims: "Розміри порізки", finalDims: "Кінцеві розміри", bandingSeq: "Послідовність кромкування", step: "крок", close: "Закрити", errEmpty: "Файл порожній.", errParse: "Не вдалося прочитати дані. Перевірте формат CSV.", errRead: "Помилка читання файлу.", errFetch: "Не вдалося отримати дані з Інтернету. Показано зразки даних.", notes: "Примітки", editData: "Редагування даних", rounded: "заокруглена", fluted: "фрезерована", thickness: "Товщина", dimension: "Розмір", roundedCol: "Заокруг.", flutedCol: "Фрезер.", settings: "Налаштування", language: "Мова", textSize: "Розмір тексту", exitAlert: "Натисніть 'Назад' ще раз, щоб вийти з програми.", theme: "Тема", themeLight: "Світла", themeDark: "Темна", themeMinimal: "Мінімалістична", themeHN: "HackerNews", themeSuperCompact: "Супер компактна", allCollections: "Всі колекції" }
+            lt: { title: "Briaunavimas", search: "Ieškoti (pavadinimas, kodas, matmenys)...", clearSearch: "Išvalyti paiešką", uploadDesktop: "Įkelti CSV", uploadMobile: "Įkelti", loading: "Apdorojama...", noPartsTitle: "Nerasta jokių detalių", noPartsDesc: "Pabandykite pakeisti paieškos kriterijus arba įkelkite tinkamo formato CSV failą.", listTitle: "Detalių sąrašas", showing: (x, y) => `Rodoma ${x} iš ${y} detalių`, collection: "Kolekcija", name: "Pavadinimas", cutting: "Pjovimo matmuo", final: "Galutinis matmuo", pcs: "vnt.", cutDims: "Pjovimo matmenys", finalDims: "Galutiniai matmenys", bandingSeq: "Briaunavimo eiga", step: "žingsnis", close: "Uždaryti", errEmpty: "Failas tuščias.", errParse: "Nepavyko nuskaityti duomenų. Patikrinkite CSV formatą.", errRead: "Įvyko klaida skaitant failą.", errFetch: "Nepavyko gauti duomenų iš interneto. Rodomi pavyzdiniai duomenys.", notes: "Pastabos", editData: "Duomenų redagavimas", rounded: "apvalinta", fluted: "fluted", thickness: "Storis", dimension: "Kraštinė", roundedCol: "Apvalinta", flutedCol: "Fluted", settings: "Nustatymai", language: "Kalba", textSize: "Teksto dydis", exitAlert: "Paspauskite 'Atgal' dar kartą, kad išeitumėte iš programos.", theme: "Tema", themeLight: "Šviesi", themeDark: "Tamsi", themeMinimal: "Minimalistinė", themeHN: "HackerNews", themeSuperCompact: "Itin kompaktiška", allCollections: "Visos kolekcijos", exportCSV: "Eksportuoti CSV", showMore: (n) => `Rodyti daugiau (${n} liko)`, prevStep: "Ankstesnis žingsnis", nextStep: "Kitas žingsnis" },
+            en: { title: "Edge Banding", search: "Search (name, code, dimensions)...", clearSearch: "Clear search", uploadDesktop: "Upload CSV", uploadMobile: "Upload", loading: "Processing...", noPartsTitle: "No parts found", noPartsDesc: "Try changing the search criteria or upload a valid CSV file.", listTitle: "Parts List", showing: (x, y) => `Showing ${x} of ${y} parts`, collection: "Collection", name: "Name", cutting: "Cutting Dim.", final: "Final Dim.", pcs: "pcs.", cutDims: "Cutting dimensions", finalDims: "Final dimensions", bandingSeq: "Edge banding sequence", step: "step", close: "Close", errEmpty: "File is empty.", errParse: "Failed to parse data. Please check CSV format.", errRead: "Error reading file.", errFetch: "Failed to fetch data from the internet. Showing sample data.", notes: "Notes", editData: "Data Edit", rounded: "rounded", fluted: "fluted", thickness: "Thickness", dimension: "Dimension", roundedCol: "Rounded", flutedCol: "Fluted", settings: "Settings", language: "Language", textSize: "Text Size", exitAlert: "Press 'Back' again to exit the app.", theme: "Theme", themeLight: "Light", themeDark: "Dark", themeMinimal: "Minimalist", themeHN: "HackerNews", themeSuperCompact: "Super Compact", allCollections: "All collections", exportCSV: "Export CSV", showMore: (n) => `Show more (${n} remaining)`, prevStep: "Previous step", nextStep: "Next step" },
+            uk: { title: "Кромкування", search: "Пошук (назва, код, розміри)...", clearSearch: "Очистити пошук", uploadDesktop: "Завантажити CSV", uploadMobile: "Завантаж.", loading: "Обробка...", noPartsTitle: "Деталей не знайдено", noPartsDesc: "Спробуйте змінити критерії пошуку або завантажте дійсний файл CSV.", listTitle: "Список деталей", showing: (x, y) => `Показано ${x} з ${y} деталей`, collection: "Колекція", name: "Назва", cutting: "Розмір порізки", final: "Кінцевий розмір", pcs: "шт.", cutDims: "Розміри порізки", finalDims: "Кінцеві розміри", bandingSeq: "Послідовність кромкування", step: "крок", close: "Закрити", errEmpty: "Файл порожній.", errParse: "Не вдалося прочитати дані. Перевірте формат CSV.", errRead: "Помилка читання файлу.", errFetch: "Не вдалося отримати дані з Інтернету. Показано зразки даних.", notes: "Примітки", editData: "Редагування даних", rounded: "заокруглена", fluted: "фрезерована", thickness: "Товщина", dimension: "Розмір", roundedCol: "Заокруг.", flutedCol: "Фрезер.", settings: "Налаштування", language: "Мова", textSize: "Розмір тексту", exitAlert: "Натисніть 'Назад' ще раз, щоб вийти з програми.", theme: "Тема", themeLight: "Світла", themeDark: "Темна", themeMinimal: "Мінімалістична", themeHN: "HackerNews", themeSuperCompact: "Супер компактна", allCollections: "Всі колекції", exportCSV: "Експортувати CSV", showMore: (n) => `Показати більше (${n} залишилось)`, prevStep: "Попередній крок", nextStep: "Наступний крок" }
         };
 
         const defaultParts = [
             { id: '1', code: 'S1-03', name: '24 End Panel LR', material: 'S1-02-51', qty: 1, cutL: 711, cutW: 595, cutT: 18, finalL: 713, finalW: 599, finalT: 18, edges: { step1: '0.4mm - 595', step2: '3mm - 711', step3: '3mm - 711 F', step4: '3mm - 595 A F' }, note: 'Dėmesio: atkreipti dėmesį į tekstūros kryptį frezuojant!', _searchStr: 's1-03 24 end panel lr s1-02-51 711 595 18 711x595 595x711 711x595x18 713 599 18 713x599 599x713 713x599x18' }
         ];
 
+        // ─── Shared Components ────────────────────────────
         const HighlightedText = memo(({ text, regex }) => {
             if (!text) return null;
             const str = String(text);
@@ -228,6 +231,7 @@
             </div>
         ));
 
+        // ─── Part 2D View (memoized for performance) ─────
         const Part2DView = memo(({ length, width, steps, visibleCount, clipId, partName }) => {
             let boardXDim = length;
             let boardYDim = width;
@@ -255,9 +259,8 @@
             
             steps.forEach((step, idx) => {
                 const valNormalized = step.val.replace(',', '.');
-                // Accurately extract just the thickness part (before the '-') to avoid bugs with dimensions like '1520,4'
                 const thicknessPart = valNormalized.split('-')[0].trim();
-                const isThin = thicknessPart === '0.4';
+                const isThin = thicknessPart.includes('0.4');
                 const strokeWidth = isThin ? 2.5 : 6; 
                 const fill = isThin ? "#E5C19E" : "#D4A373";
                 const isRounded = step.val.toUpperCase().includes('A');
@@ -283,7 +286,7 @@
             const isThick = (side) => {
                 if (!isActive(side)) return false;
                 const thicknessPart = mappedEdges[side].val.replace(',', '.').split('-')[0].trim();
-                return thicknessPart !== '0.4';
+                return !thicknessPart.includes('0.4');
             };
             
             const R = 8, eps = 0.01; 
@@ -361,6 +364,7 @@
             );
         });
 
+        // ─── Part Detail Card with manual step control ──
         const PartCard = ({ part, t, onClose }) => {
             const steps = [
                 { seq: 1, val: part.edges.step1 }, { seq: 2, val: part.edges.step2 },
@@ -371,11 +375,18 @@
             
             useFocusTrap(modalRef, true);
             
+            const handlePrev = useCallback(() => setVisibleCount(c => Math.max(0, c - 1)), []);
+            const handleNext = useCallback(() => setVisibleCount(c => Math.min(steps.length, c + 1)), [steps.length]);
+            const handleReset = useCallback(() => setVisibleCount(0), []);
+            
             useEffect(() => {
-                if (steps.length === 0) return;
-                const interval = setInterval(() => setVisibleCount(prev => (prev > steps.length ? 0 : prev + 1)), 800);
-                return () => clearInterval(interval);
-            }, [steps.length]);
+                const handleKey = (e) => {
+                    if (e.key === 'ArrowLeft') handlePrev();
+                    else if (e.key === 'ArrowRight') handleNext();
+                };
+                window.addEventListener('keydown', handleKey);
+                return () => window.removeEventListener('keydown', handleKey);
+            }, [handlePrev, handleNext]);
 
             return (
                 <div ref={modalRef} className="bg-white rounded-xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col w-full animate-fade-in">
@@ -414,6 +425,19 @@
                         
                         <div className="w-full">
                             <Part2DView length={part.cutL} width={part.cutW} steps={steps} visibleCount={visibleCount} clipId={part.id} partName={part.name} />
+                        </div>
+                        
+                        <div className="flex items-center justify-center gap-3">
+                            <button onClick={handlePrev} disabled={visibleCount === 0} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-sm font-semibold text-slate-700 transition-colors flex items-center gap-1">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/></svg>
+                                {t.prevStep}
+                            </button>
+                            <span className="text-sm font-bold text-slate-500 min-w-[4rem] text-center">{visibleCount}/{steps.length}</span>
+                            <button onClick={handleNext} disabled={visibleCount >= steps.length} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-sm font-semibold text-slate-700 transition-colors flex items-center gap-1">
+                                {t.nextStep}
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/></svg>
+                            </button>
+                            <button onClick={handleReset} className="px-3 py-2 text-xs text-slate-500 hover:text-brandRed transition-colors">↺</button>
                         </div>
                         
                         <div className="flex-grow flex flex-col">
@@ -491,6 +515,7 @@
             );
         };
 
+        // ─── Grid Row (memoized) ──────────────────────────
         const GridRow = memo(({ part, onClick, t, searchRegex }) => (
             <div onClick={() => onClick(part)} tabIndex="0" onKeyDown={(e) => e.key === 'Enter' && onClick(part)} 
                 className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 px-4 py-3.5 items-center border-b border-slate-100 last:border-0 hover:bg-slate-50/80 focus:bg-slate-50 focus:ring-2 focus:ring-inset focus:ring-brandBlue/50 outline-none cursor-pointer transition-all duration-200 print:border-b-black print:border-dashed print:py-2 print:gap-1 group">
@@ -531,14 +556,101 @@
             </div>
         ));
 
+        // ─── Custom Hook: CSV Parsing & Remote Fetch ──────
+        const usePartsData = (t) => {
+            const [parts, setParts] = useState(defaultParts);
+            const [error, setError] = useState(null);
+            const [isLoading, setIsLoading] = useState(true);
+            const parseCSV = useCallback((text) => {
+                const parseDim = (val, def = 0) => {
+                    if (!val) return def;
+                    const parsed = parseFloat(val.toString().replace(',', '.'));
+                    return isNaN(parsed) ? def : parsed;
+                };
+                const formatEdge = (type, len) => {
+                    if (!type || !len) return null;
+                    const tStr = type.trim(), lStr = len.trim();
+                    return (tStr !== '0' && lStr !== '0' && tStr !== '-') ? `${tStr} - ${lStr}` : null;
+                };
+                Papa.parse(text, {
+                    header: false, skipEmptyLines: true,
+                    complete: (results) => {
+                        try {
+                            if (!results.data?.length) throw new Error(t.errEmpty);
+                            const newParts = [];
+                            for (let i = 0; i < results.data.length; i++) {
+                                const cols = results.data[i];
+                                const rawCutL = cols[5];
+                                if (!rawCutL) continue;
+                                const strictCheckDim = parseFloat(rawCutL.toString().replace(',', '.'));
+                                if (cols.length < 10 || isNaN(strictCheckDim)) continue;
+                                
+                                const cutL = parseDim(rawCutL, 0); const cutW = parseDim(cols[6], 0); const cutT = parseDim(cols[7], 18);
+                                const finalL = parseDim(cols[8], 0); const finalW = parseDim(cols[9], 0); const finalT = parseDim(cols[10], 18);
+                                const code = cols[1] || '-'; const name = cols[2] || `Detalė ${i}`; const material = cols[3] || 'Nenurodyta';
+                                
+                                const _searchStr = `${code} ${name} ${material} ${cutL} ${cutW} ${cutT} ${cutL}x${cutW} ${cutW}x${cutL} ${cutL}x${cutW}x${cutT} ${finalL} ${finalW} ${finalT} ${finalL}x${finalW} ${finalW}x${finalL} ${finalL}x${finalW}x${finalT}`.toLowerCase();
+                                newParts.push({
+                                    id: `item-${i}-${Date.now()}`, code, name, material,
+                                    qty: parseInt(cols[4]) || 1, cutL, cutW, cutT, finalL, finalW, finalT,
+                                    edges: {
+                                        step1: formatEdge(cols[11], cols[12]), step2: formatEdge(cols[13], cols[14]),
+                                        step3: formatEdge(cols[15], cols[16]), step4: formatEdge(cols[17], cols[18])
+                                    },
+                                    note: cols[19] ? cols[19].trim() : '', _searchStr
+                                });
+                            }
+                            if (newParts.length > 0) { setParts(newParts); setError(null); } 
+                            else { setError(t.errParse); }
+                        } catch (err) { setError(t.errRead); console.error(err); }
+                    },
+                    error: (err) => { setError(t.errParse); console.error("PapaParse Error:", err); }
+                });
+            }, [t]);
+
+            useEffect(() => {
+                let isMounted = true;
+                const fetchOnlineCSV = async () => {
+                    try {
+                        const localData = await idb.get('cached_parts_csv_v4');
+                        if (localData && isMounted) { parseCSV(localData); setIsLoading(false); } 
+                        else if (isMounted) setIsLoading(true);
+                        
+                        const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQSHJJdOhsNzRuq-WmcCS1SFCUqvRlYFYU9I9rs1LL9zlJ8AQWzwB3l_1PY67wbnHxhTDTi5VrC1jRq/pub?gid=1947074840&single=true&output=csv";
+                        const response = await fetch(url);
+                        if (!response.ok) throw new Error(response.statusText);
+                        const remoteText = await response.text();
+                        if (remoteText !== localData) {
+                            await idb.set('cached_parts_csv_v4', remoteText);
+                            if (isMounted) parseCSV(remoteText);
+                        }
+                    } catch (err) { if (isMounted && isLoading) setError(t.errFetch); } 
+                    finally { if (isMounted) setIsLoading(false); }
+                };
+                fetchOnlineCSV();
+                return () => { isMounted = false; };
+            }, [parseCSV, t]);
+
+            const uploadCSV = useCallback((file) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const text = e.target.result;
+                    parseCSV(text);
+                    idb.set('cached_parts_csv_v4', text); // update cache
+                };
+                reader.readAsText(file);
+            }, [parseCSV]);
+
+            return { parts, error, isLoading, uploadCSV };
+        };
+
+        // ─── Main Application ─────────────────────────────
         const App = () => {
             const [lang, setLang] = useState(() => localStorage.getItem('app_lang') || 'lt');
             const t = translations[lang];
             const [searchTerm, setSearchTerm] = useState(() => localStorage.getItem('app_searchTerm') || '');
-            const debouncedSearchTerm = useDebounce(searchTerm, 200);
-            const [parts, setParts] = useState(defaultParts);
-            const [error, setError] = useState(null);
-            const [isLoading, setIsLoading] = useState(true);
+            const debouncedSearchTerm = useDebounce(searchTerm, 180);
+            const { parts, error, isLoading, uploadCSV } = usePartsData(t);
             const [selectedPart, setSelectedPart] = useState(null);
             const selectedPartRef = useRef(null);
             const [selectedCollection, setSelectedCollection] = useState(() => localStorage.getItem('app_selectedCollection') || '');
@@ -550,16 +662,21 @@
             const [theme, setTheme] = useState(() => localStorage.getItem('app_theme') || 'light');
             const [isSettingsOpen, setIsSettingsOpen] = useState(false);
             const settingsRef = useRef(null);
+            const fileInputRef = useRef(null);
+            const [sortKey, setSortKey] = useState('code');
+            const [sortDir, setSortDir] = useState('asc');
 
+            // persist preferences
             useEffect(() => { localStorage.setItem('app_lang', lang); }, [lang]);
             useEffect(() => { localStorage.setItem('app_searchTerm', searchTerm); }, [searchTerm]);
             useEffect(() => { localStorage.setItem('app_textScale', textScale.toString()); }, [textScale]);
             useEffect(() => { localStorage.setItem('app_selectedCollection', selectedCollection); }, [selectedCollection]);
-
+            useEffect(() => { document.documentElement.setAttribute('data-theme', theme); localStorage.setItem('app_theme', theme); }, [theme]);
             useEffect(() => {
-                document.documentElement.setAttribute('data-theme', theme);
-                localStorage.setItem('app_theme', theme);
-            }, [theme]);
+                let finalScale = textScale;
+                if (theme === 'super-compact') finalScale = Math.max(50, textScale * 0.85);
+                document.documentElement.style.fontSize = `${finalScale}%`;
+            }, [textScale, theme]);
 
             useEffect(() => {
                 const handleClickOutside = (event) => {
@@ -568,12 +685,6 @@
                 document.addEventListener("mousedown", handleClickOutside);
                 return () => document.removeEventListener("mousedown", handleClickOutside);
             }, []);
-
-            useEffect(() => {
-                let finalScale = textScale;
-                if (theme === 'super-compact') finalScale = Math.max(50, textScale * 0.85); 
-                document.documentElement.style.fontSize = `${finalScale}%`;
-            }, [textScale, theme]);
 
             const handleOpenPart = useCallback((part) => {
                 window.history.pushState({ step: 'modal' }, '');
@@ -609,77 +720,6 @@
                 }
             }, [selectedPart, handleClosePart]);
 
-            const parseCSV = useCallback((text) => {
-                const parseDim = (val, def = 0) => {
-                    if (!val) return def;
-                    const parsed = parseFloat(val.toString().replace(',', '.'));
-                    return isNaN(parsed) ? def : parsed;
-                };
-                const formatEdge = (type, len) => {
-                    if (!type || !len) return null;
-                    const tStr = type.trim(), lStr = len.trim();
-                    return (tStr !== '0' && lStr !== '0' && tStr !== '-') ? `${tStr} - ${lStr}` : null;
-                };
-                Papa.parse(text, {
-                    header: false, skipEmptyLines: true,
-                    complete: (results) => {
-                        try {
-                            if (!results.data?.length) throw new Error(t.errEmpty);
-                            const newParts = [];
-                            for (let i = 0; i < results.data.length; i++) {
-                                const cols = results.data[i];
-                                const rawCutL = cols[5];
-                                if (!rawCutL) continue;
-                                const strictCheckDim = parseFloat(rawCutL.toString().replace(',', '.'));
-                                if (cols.length < 10 || isNaN(strictCheckDim)) continue;
-                                
-                                const cutL = parseDim(rawCutL, 0); const cutW = parseDim(cols[6], 0); const cutT = parseDim(cols[7], 18);
-                                const finalL = parseDim(cols[8], 0); const finalW = parseDim(cols[9], 0); const finalT = parseDim(cols[10], 18);
-                                const code = cols[1] || '-'; const name = cols[2] || `Detalė ${i}`; const material = cols[3] || 'Nenurodyta';
-                                
-                                const _searchStr = `${code} ${name} ${material} ${cutL} ${cutW} ${cutT} ${cutL}x${cutW} ${cutW}x${cutL} ${cutL}x${cutW}x${cutT} ${finalL} ${finalW} ${finalT} ${finalL}x${finalW} ${finalW}x${finalL} ${finalL}x${finalW}x${finalT}`.toLowerCase();
-
-                                newParts.push({
-                                    id: `item-${i}-${Date.now()}`, code, name, material,
-                                    qty: parseInt(cols[4]) || 1, cutL, cutW, cutT, finalL, finalW, finalT,
-                                    edges: {
-                                        step1: formatEdge(cols[11], cols[12]), step2: formatEdge(cols[13], cols[14]),
-                                        step3: formatEdge(cols[15], cols[16]), step4: formatEdge(cols[17], cols[18])
-                                    },
-                                    note: cols[19] ? cols[19].trim() : '', _searchStr
-                                });
-                            }
-                            if (newParts.length > 0) { setParts(newParts); setError(null); } 
-                            else { setError(t.errParse); }
-                        } catch (err) { setError(t.errRead); console.error(err); }
-                    },
-                    error: (err) => { setError(t.errParse); console.error("PapaParse Error:", err); }
-                });
-            }, [t]);
-
-            useEffect(() => {
-                let isMounted = true;
-                const fetchOnlineCSV = async () => {
-                    try {
-                        const localData = await idb.get('cached_parts_csv_v4');
-                        if (localData && isMounted) { parseCSV(localData); setIsLoading(false); } 
-                        else if (isMounted) setIsLoading(true);
-                        
-                        const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQSHJJdOhsNzRuq-WmcCS1SFCUqvRlYFYU9I9rs1LL9zlJ8AQWzwB3l_1PY67wbnHxhTDTi5VrC1jRq/pub?gid=1947074840&single=true&output=csv";
-                        const response = await fetch(url);
-                        if (!response.ok) throw new Error(response.statusText);
-                        const remoteText = await response.text();
-                        if (remoteText !== localData) {
-                            await idb.set('cached_parts_csv_v4', remoteText);
-                            if (isMounted) parseCSV(remoteText);
-                        }
-                    } catch (err) { if (isMounted && isLoading) setError(translations[lang].errFetch); } 
-                    finally { if (isMounted) setIsLoading(false); }
-                };
-                fetchOnlineCSV();
-                return () => { isMounted = false; };
-            }, [parseCSV, lang]);
-
             const searchRegex = useMemo(() => {
                 const baseTerms = debouncedSearchTerm.toLowerCase().trim().split(/\s+/).filter(Boolean);
                 if (!baseTerms.length) return null;
@@ -691,51 +731,95 @@
                     }
                 }
                 const sortedTerms = Array.from(expanded).sort((a, b) => b.length - a.length);
-                const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 return new RegExp(`(${sortedTerms.map(escapeRegExp).join('|')})`, 'gi');
             }, [debouncedSearchTerm]);
 
-            const collections = useMemo(() => {
-                const unique = new Set();
-                for (let i = 0; i < parts.length; i++) {
-                    if (parts[i].code && parts[i].code !== '-') unique.add(parts[i].code);
-                }
-                return Array.from(unique).sort(new Intl.Collator(lang).compare);
-            }, [parts, lang]);
-
+            const collections = useMemo(() => ['AUSTIN', 'MOPAC', 'S1', 'S2', 'S3'], []);
             useEffect(() => {
-                if (selectedCollection && collections.length > 0 && !collections.includes(selectedCollection)) setSelectedCollection('');
+                if (selectedCollection && !collections.includes(selectedCollection)) setSelectedCollection('');
             }, [collections, selectedCollection]);
 
-            const filteredParts = useMemo(() => {
-                const searchLower = debouncedSearchTerm.toLowerCase().trim();
-                if (!searchLower && !selectedCollection) return parts;
-                const searchTerms = searchLower.split(/\s+/).filter(Boolean);
-                
-                return parts.filter(p => {
-                    if (selectedCollection && p.code !== selectedCollection) return false;
-                    for (let i = 0; i < searchTerms.length; i++) {
-                        if (!p._searchStr.includes(searchTerms[i])) return false;
+            // Sorting logic
+            const handleSort = useCallback((key) => {
+                setSortKey(prevKey => {
+                    if (prevKey === key) {
+                        setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+                        return key;
                     }
-                    return true;
+                    setSortDir('asc');
+                    return key;
                 });
-            }, [parts, debouncedSearchTerm, selectedCollection]);
+            }, []);
 
-            useEffect(() => { setRenderLimit(50); }, [debouncedSearchTerm, selectedCollection]);
+            const sortedFilteredParts = useMemo(() => {
+                const searchLower = debouncedSearchTerm.toLowerCase().trim();
+                const searchTerms = searchLower.split(/\s+/).filter(Boolean);
+                let filtered = parts;
+                if (selectedCollection) {
+                    filtered = filtered.filter(p => p.code && p.code.toUpperCase().startsWith(selectedCollection.toUpperCase()));
+                }
+                if (searchTerms.length > 0) {
+                    filtered = filtered.filter(p => searchTerms.every(term => p._searchStr.includes(term)));
+                }
+                // sort
+                const getSortValue = (part) => {
+                    switch(sortKey) {
+                        case 'name': return part.name.toLowerCase();
+                        case 'code': return part.code.toLowerCase();
+                        case 'cutL': return part.cutL;
+                        case 'cutW': return part.cutW;
+                        case 'finalL': return part.finalL;
+                        case 'finalW': return part.finalW;
+                        default: return part.code.toLowerCase();
+                    }
+                };
+                const sorted = [...filtered].sort((a, b) => {
+                    const valA = getSortValue(a), valB = getSortValue(b);
+                    if (valA < valB) return sortDir === 'asc' ? -1 : 1;
+                    if (valA > valB) return sortDir === 'asc' ? 1 : -1;
+                    return 0;
+                });
+                return sorted;
+            }, [parts, debouncedSearchTerm, selectedCollection, sortKey, sortDir]);
 
-            const visibleParts = useMemo(() => filteredParts.slice(0, renderLimit), [filteredParts, renderLimit]);
+            useEffect(() => { setRenderLimit(50); }, [debouncedSearchTerm, selectedCollection, sortKey, sortDir]);
+
+            const visibleParts = useMemo(() => sortedFilteredParts.slice(0, renderLimit), [sortedFilteredParts, renderLimit]);
 
             useEffect(() => {
-                if (isLoading || visibleParts.length >= filteredParts.length) return;
-                const observer = new IntersectionObserver((entries) => { if (entries[0].isIntersecting) setRenderLimit(prev => prev + 50); }, { rootMargin: '200px' });
+                if (isLoading || visibleParts.length >= sortedFilteredParts.length) return;
+                const observer = new IntersectionObserver((entries) => {
+                    if (entries[0].isIntersecting) setRenderLimit(prev => prev + 50);
+                }, { rootMargin: '200px' });
                 if (loaderRef.current) observer.observe(loaderRef.current);
                 return () => observer.disconnect();
-            }, [isLoading, visibleParts.length, filteredParts.length]);
+            }, [isLoading, visibleParts.length, sortedFilteredParts.length]);
+
+            const handleShowMore = useCallback(() => setRenderLimit(prev => prev + 50), []);
+
+            // Export CSV
+            const exportCSV = useCallback(() => {
+                const header = ["Code","Name","Material","Qty","Cut L","Cut W","Cut T","Final L","Final W","Final T","Edge1 Type","Edge1 Dim","Edge2 Type","Edge2 Dim","Edge3 Type","Edge3 Dim","Edge4 Type","Edge4 Dim","Note"];
+                const rows = parts.map(p => [
+                    p.code, p.name, p.material, p.qty, p.cutL, p.cutW, p.cutT, p.finalL, p.finalW, p.finalT,
+                    p.edges.step1 ? p.edges.step1.split(' - ')[0] : '', p.edges.step1 ? p.edges.step1.split(' - ')[1] : '',
+                    p.edges.step2 ? p.edges.step2.split(' - ')[0] : '', p.edges.step2 ? p.edges.step2.split(' - ')[1] : '',
+                    p.edges.step3 ? p.edges.step3.split(' - ')[0] : '', p.edges.step3 ? p.edges.step3.split(' - ')[1] : '',
+                    p.edges.step4 ? p.edges.step4.split(' - ')[0] : '', p.edges.step4 ? p.edges.step4.split(' - ')[1] : '',
+                    p.note || ''
+                ]);
+                const csvContent = [header, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+                const blob = new Blob(['\uFEFF' + csvContent], {type: 'text/csv;charset=utf-8;'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = 'detales_briaunavimas.csv'; a.click();
+                URL.revokeObjectURL(url);
+            }, [parts]);
 
             return (
                 <div className="min-h-screen pb-12 transition-colors duration-200">
                     <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm print:hidden">
-                        <div className="max-w-6xl mx-auto px-4 py-3 sm:py-4 flex items-center justify-between gap-4">
+                        <div className="max-w-6xl mx-auto px-4 py-3 sm:py-4 flex items-center justify-between gap-4 flex-wrap sm:flex-nowrap">
                             <div className="flex items-center shrink-0">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14">
                                     <g fill="none" stroke="currentColor" className="text-brandRed" strokeWidth="6" strokeLinejoin="round" strokeLinecap="round">
@@ -744,7 +828,7 @@
                                     </g>
                                 </svg>
                             </div>
-                            <div className="flex-1 max-w-4xl relative flex flex-col sm:flex-row gap-2 sm:gap-3">
+                            <div className="flex-1 max-w-4xl flex flex-col sm:flex-row gap-2 sm:gap-3">
                                 <div className="relative flex-1 flex items-center">
                                     <svg className="w-5 h-5 sm:w-6 sm:h-6 text-slate-400 absolute left-3 sm:left-4 z-10 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                                     <input type="text" placeholder={t.search} className="w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-2 sm:py-3 md:py-3.5 text-sm sm:text-base border-2 border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-4 focus:ring-brandRed/20 focus:border-brandRed outline-none text-slate-800 transition-all shadow-sm placeholder:text-slate-400" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
@@ -766,69 +850,88 @@
                                     </div>
                                 )}
                             </div>
-                            <div className="relative flex items-center shrink-0" ref={settingsRef}>
-                                <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} className={`p-2 md:p-2.5 rounded-xl transition-all shadow-sm border ${isSettingsOpen ? 'bg-slate-100 text-brandBlue border-slate-300' : 'text-slate-600 hover:text-brandBlue hover:bg-slate-50 border-slate-200'}`} aria-label={t.settings} title={t.settings}>
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                    </svg>
+                            <div className="flex items-center gap-2 shrink-0">
+                                {/* Upload CSV Button */}
+                                <input type="file" accept=".csv" ref={fileInputRef} className="hidden" onChange={(e) => { if (e.target.files[0]) uploadCSV(e.target.files[0]); e.target.value = ''; }} />
+                                <button onClick={() => fileInputRef.current.click()} className="p-2 md:p-2.5 rounded-xl transition-all shadow-sm border text-slate-600 hover:text-brandBlue hover:bg-slate-50 border-slate-200" title={t.uploadDesktop}>
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
                                 </button>
-                                {isSettingsOpen && (
-                                    <div className="absolute top-full right-0 mt-3 w-64 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50 animate-fade-in origin-top-right">
-                                        <div className="p-5 flex flex-col gap-4">
-                                            <div>
-                                                <span className="block text-[0.625rem] font-bold text-slate-400 uppercase tracking-wider mb-2.5">{t.language}</span>
-                                                <div className="flex items-center gap-3">
-                                                    <button onClick={() => setLang('lt')} className={`text-2xl transition-all duration-200 hover:scale-110 ${lang === 'lt' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`} title="Lietuvių">🇱🇹</button>
-                                                    <button onClick={() => setLang('en')} className={`text-2xl transition-all duration-200 hover:scale-110 ${lang === 'en' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`} title="English">🇬🇧</button>
-                                                    <button onClick={() => setLang('uk')} className={`text-2xl transition-all duration-200 hover:scale-110 ${lang === 'uk' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`} title="Українська">🇺🇦</button>
+                                {/* Export CSV */}
+                                <button onClick={exportCSV} className="p-2 md:p-2.5 rounded-xl transition-all shadow-sm border text-slate-600 hover:text-brandBlue hover:bg-slate-50 border-slate-200" title={t.exportCSV}>
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                </button>
+                                {/* Settings */}
+                                <div className="relative" ref={settingsRef}>
+                                    <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} className={`p-2 md:p-2.5 rounded-xl transition-all shadow-sm border ${isSettingsOpen ? 'bg-slate-100 text-brandBlue border-slate-300' : 'text-slate-600 hover:text-brandBlue hover:bg-slate-50 border-slate-200'}`} aria-label={t.settings} title={t.settings}>
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        </svg>
+                                    </button>
+                                    {isSettingsOpen && (
+                                        <div className="absolute top-full right-0 mt-3 w-64 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50 animate-fade-in origin-top-right">
+                                            <div className="p-5 flex flex-col gap-4">
+                                                <div>
+                                                    <span className="block text-[0.625rem] font-bold text-slate-400 uppercase tracking-wider mb-2.5">{t.language}</span>
+                                                    <div className="flex items-center gap-3">
+                                                        <button onClick={() => setLang('lt')} className={`text-2xl transition-all duration-200 hover:scale-110 ${lang === 'lt' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`} title="Lietuvių">🇱🇹</button>
+                                                        <button onClick={() => setLang('en')} className={`text-2xl transition-all duration-200 hover:scale-110 ${lang === 'en' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`} title="English">🇬🇧</button>
+                                                        <button onClick={() => setLang('uk')} className={`text-2xl transition-all duration-200 hover:scale-110 ${lang === 'uk' ? 'scale-110 drop-shadow-sm' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`} title="Українська">🇺🇦</button>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="w-full h-px bg-slate-100"></div>
-                                            <div>
-                                                <span className="block text-[0.625rem] font-bold text-slate-400 uppercase tracking-wider mb-2.5">{t.textSize}</span>
-                                                <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200 shadow-inner w-fit">
-                                                    <button onClick={() => setTextScale(s => Math.max(70, s - 10))} className="px-3 py-1.5 hover:bg-white rounded-md text-sm font-bold text-slate-700 shadow-sm transition-all" title="Sumažinti tekstą">A-</button>
-                                                    <button onClick={() => setTextScale(100)} className="px-3 py-1.5 hover:bg-white rounded-md text-sm font-bold text-slate-700 shadow-sm transition-all" title="Atstatyti tekstą">A</button>
-                                                    <button onClick={() => setTextScale(s => Math.min(150, s + 10))} className="px-3 py-1.5 hover:bg-white rounded-md text-sm font-bold text-slate-700 shadow-sm transition-all" title="Padidinti tekstą">A+</button>
+                                                <div className="w-full h-px bg-slate-100"></div>
+                                                <div>
+                                                    <span className="block text-[0.625rem] font-bold text-slate-400 uppercase tracking-wider mb-2.5">{t.textSize}</span>
+                                                    <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200 shadow-inner w-fit">
+                                                        <button onClick={() => setTextScale(s => Math.max(70, s - 10))} className="px-3 py-1.5 hover:bg-white rounded-md text-sm font-bold text-slate-700 shadow-sm transition-all">A-</button>
+                                                        <button onClick={() => setTextScale(100)} className="px-3 py-1.5 hover:bg-white rounded-md text-sm font-bold text-slate-700 shadow-sm transition-all">A</button>
+                                                        <button onClick={() => setTextScale(s => Math.min(150, s + 10))} className="px-3 py-1.5 hover:bg-white rounded-md text-sm font-bold text-slate-700 shadow-sm transition-all">A+</button>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="w-full h-px bg-slate-100"></div>
-                                            <div>
-                                                <span className="block text-[0.625rem] font-bold text-slate-400 uppercase tracking-wider mb-2.5">{t.theme}</span>
-                                                <div className="flex items-center gap-2">
-                                                    <button onClick={() => setTheme('light')} className={`p-2 rounded-lg transition-colors flex-1 flex justify-center ${theme === 'light' ? 'bg-brandBlue text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 bg-slate-50 border border-slate-200'}`} title={t.themeLight}>
-                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><circle cx="12" cy="12" r="5"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-                                                    </button>
-                                                    <button onClick={() => setTheme('dark')} className={`p-2 rounded-lg transition-colors flex-1 flex justify-center ${theme === 'dark' ? 'bg-brandBlue text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 bg-slate-50 border border-slate-200'}`} title={t.themeDark}>
-                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                                                    </button>
-                                                    <button onClick={() => setTheme('minimal')} className={`p-2 rounded-lg transition-colors flex-1 flex justify-center ${theme === 'minimal' ? 'bg-brandBlue text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 bg-slate-50 border border-slate-200'}`} title={t.themeMinimal}>
-                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/></svg>
-                                                    </button>
-                                                    <button onClick={() => setTheme('hn')} className={`p-2 rounded-lg transition-colors flex-1 flex justify-center ${theme === 'hn' ? 'bg-brandBlue text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 bg-slate-50 border border-slate-200'}`} title={t.themeHN}>
-                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><rect x="2" y="2" width="20" height="20" rx="2" ry="2" strokeWidth="2"/><path d="M8 8l4 6v4m4-10l-4 6"/></svg>
-                                                    </button>
-                                                    <button onClick={() => setTheme('super-compact')} className={`p-2 rounded-lg transition-colors flex-1 flex justify-center ${theme === 'super-compact' ? 'bg-brandBlue text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 bg-slate-50 border border-slate-200'}`} title={t.themeSuperCompact}>
-                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><path d="M4 6h16M4 10h16M4 14h16M4 18h16" strokeLinecap="round"/></svg>
-                                                    </button>
+                                                <div className="w-full h-px bg-slate-100"></div>
+                                                <div>
+                                                    <span className="block text-[0.625rem] font-bold text-slate-400 uppercase tracking-wider mb-2.5">{t.theme}</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <button onClick={() => setTheme('light')} className={`p-2 rounded-lg transition-colors flex-1 flex justify-center ${theme === 'light' ? 'bg-brandBlue text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 bg-slate-50 border border-slate-200'}`}>
+                                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><circle cx="12" cy="12" r="5"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                                                        </button>
+                                                        <button onClick={() => setTheme('dark')} className={`p-2 rounded-lg transition-colors flex-1 flex justify-center ${theme === 'dark' ? 'bg-brandBlue text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 bg-slate-50 border border-slate-200'}`}>
+                                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                                                        </button>
+                                                        <button onClick={() => setTheme('minimal')} className={`p-2 rounded-lg transition-colors flex-1 flex justify-center ${theme === 'minimal' ? 'bg-brandBlue text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 bg-slate-50 border border-slate-200'}`}>
+                                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/></svg>
+                                                        </button>
+                                                        <button onClick={() => setTheme('hn')} className={`p-2 rounded-lg transition-colors flex-1 flex justify-center ${theme === 'hn' ? 'bg-brandBlue text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 bg-slate-50 border border-slate-200'}`}>
+                                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><rect x="2" y="2" width="20" height="20" rx="2" ry="2" strokeWidth="2"/><path d="M8 8l4 6v4m4-10l-4 6"/></svg>
+                                                        </button>
+                                                        <button onClick={() => setTheme('super-compact')} className={`p-2 rounded-lg transition-colors flex-1 flex justify-center ${theme === 'super-compact' ? 'bg-brandBlue text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 bg-slate-50 border border-slate-200'}`}>
+                                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><path d="M4 6h16M4 10h16M4 14h16M4 18h16" strokeLinecap="round"/></svg>
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="w-full h-px bg-slate-100"></div>
-                                            <div>
-                                                <a href="https://docs.google.com/spreadsheets/d/1dmgyXAz_ZEbjI5P5P6MbiwaSTIY6KesygqZ-6gvvvs8/edit?gid=1947074840#gid=1947074840" target="_blank" rel="noopener noreferrer" className="cursor-pointer bg-brandRed hover:bg-red-600 hover:scale-105 text-white py-2.5 px-4 rounded-lg shadow-md transition-all text-sm font-bold flex items-center justify-center gap-2 w-full">
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                                                    <span>{t.editData}</span>
-                                                </a>
+                                                <div className="w-full h-px bg-slate-100"></div>
+                                                <div>
+                                                    <a href="https://docs.google.com/spreadsheets/d/1dmgyXAz_ZEbjI5P5P6MbiwaSTIY6KesygqZ-6gvvvs8/edit?gid=1947074840#gid=1947074840" target="_blank" rel="noopener noreferrer" className="cursor-pointer bg-brandRed hover:bg-red-600 hover:scale-105 text-white py-2.5 px-4 rounded-lg shadow-md transition-all text-sm font-bold flex items-center justify-center gap-2 w-full">
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                                        <span>{t.editData}</span>
+                                                    </a>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </header>
                     <div className="sticky top-0 md:top-0 z-20 bg-brandRed h-1 shadow-sm print:hidden"></div>
-                    <main className="max-w-6xl mx-auto px-4 mt-6">
+                    <main className="max-w-6xl mx-auto px-4 mt-4">
+                        {/* Status bar */}
+                        {!isLoading && sortedFilteredParts.length > 0 && (
+                            <div className="mb-3 text-sm text-slate-600 font-medium flex items-center justify-between flex-wrap gap-2">
+                                <span>{t.showing(visibleParts.length, sortedFilteredParts.length)}</span>
+                                <span className="text-xs text-slate-400">{t.listTitle}</span>
+                            </div>
+                        )}
                         {error && (
                             <div className="mb-6 p-4 bg-white border-l-4 border-brandRed text-slate-800 rounded-md shadow-sm flex items-center gap-3 print:hidden">
                                 <svg className="w-5 h-5 flex-shrink-0 text-brandRed" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -838,7 +941,7 @@
                         )}
                         {isLoading ? (
                             <SkeletonGrid />
-                        ) : filteredParts.length === 0 ? (
+                        ) : sortedFilteredParts.length === 0 ? (
                             <div className="text-center py-20 bg-white rounded-md border border-slate-200 shadow-sm print:hidden">
                                 <div className="mx-auto w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4"><svg className="h-8 w-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
                                 <h3 className="text-base font-bold text-brandBlue">{t.noPartsTitle}</h3>
@@ -847,17 +950,20 @@
                         ) : (
                             <div className="bg-white p-2 rounded-md border border-slate-200 shadow-sm overflow-hidden print:p-0 print:border-none print:shadow-none print:bg-transparent">
                                 <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-3 bg-slate-50/50 border-b border-slate-200 text-[0.625rem] font-bold text-slate-500 uppercase tracking-wider print:grid print:border-b-2 print:border-black print:text-black print:bg-transparent">
-                                    <div className="col-span-4 pl-1">{t.name}</div><div className="col-span-3">{t.cutting}</div><div className="col-span-3">{t.final}</div><div className="col-span-2 text-right pr-1">{t.collection}</div>
+                                    <div className="col-span-4 pl-1 cursor-pointer hover:text-brandBlue select-none flex items-center gap-1" onClick={() => handleSort('name')}>{t.name} {sortKey === 'name' && (sortDir === 'asc' ? '↑' : '↓')}</div>
+                                    <div className="col-span-3 cursor-pointer hover:text-brandBlue select-none flex items-center gap-1" onClick={() => handleSort('cutL')}>{t.cutting} {sortKey === 'cutL' && (sortDir === 'asc' ? '↑' : '↓')}</div>
+                                    <div className="col-span-3 cursor-pointer hover:text-brandBlue select-none flex items-center gap-1" onClick={() => handleSort('finalL')}>{t.final} {sortKey === 'finalL' && (sortDir === 'asc' ? '↑' : '↓')}</div>
+                                    <div className="col-span-2 text-right pr-1 cursor-pointer hover:text-brandBlue select-none flex items-center justify-end gap-1" onClick={() => handleSort('code')}>{t.collection} {sortKey === 'code' && (sortDir === 'asc' ? '↑' : '↓')}</div>
                                 </div>
                                 <div className="flex flex-col print:gap-0">
                                     {visibleParts.map(part => <GridRow key={part.id} part={part} onClick={handleOpenPart} t={t} searchRegex={searchRegex} />)}
                                 </div>
-                                {visibleParts.length < filteredParts.length && (
-                                    <div ref={loaderRef} className="p-4 flex justify-center print:hidden">
-                                        <svg className="animate-spin h-5 w-5 text-brandBlue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
+                                {visibleParts.length < sortedFilteredParts.length && (
+                                    <div className="p-4 flex justify-center print:hidden gap-3">
+                                        <button onClick={handleShowMore} className="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm rounded-lg transition-colors shadow-sm">
+                                            {t.showMore(sortedFilteredParts.length - visibleParts.length)}
+                                        </button>
+                                        <div ref={loaderRef}></div>
                                     </div>
                                 )}
                             </div>
