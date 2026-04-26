@@ -7,124 +7,117 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #0f172a; color: #f8fafc; }
-        .cast-button { --connected-color: #10b981; --disconnected-color: #ef4444; }
-        #castbutton { width: 48px; height: 48px; }
+        #castbutton { 
+            --connected-color: #10b981; 
+            --disconnected-color: #ef4444; 
+            width: 40px; 
+            height: 40px; 
+        }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4">
 
     <div class="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-2xl border border-slate-700">
         <div class="flex items-center justify-between mb-8">
-            <h1 class="text-xl font-bold tracking-tight">Media Broadcast System</h1>
-            <!-- Google Cast Button Component -->
-            <button is="google-cast-button" id="castbutton" class="opacity-80 hover:opacity-100 transition-opacity"></button>
+            <h1 class="text-xl font-bold tracking-tight">Media Relay System</h1>
+            <button is="google-cast-button" id="castbutton"></button>
         </div>
 
         <div class="space-y-6">
-            <!-- URI Input -->
             <div>
-                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Remote Payload URI</label>
-                <input type="text" id="mediaUrl" placeholder="https://example.com/video.mp4" 
-                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all">
-            </div>
-
-            <!-- Local File Input -->
-            <div>
-                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Local File (Object Proxy)</label>
-                <input type="file" id="localFile" accept="video/*"
-                    class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Target Payload URL</label>
+                <input type="text" id="mediaUrl" placeholder="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" 
+                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all text-slate-200">
             </div>
 
             <button id="broadcastBtn" 
                 class="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-bold py-3 rounded-lg shadow-lg transition-all transform active:scale-95">
-                Initiate Transmission
+                Execute Transmission
             </button>
         </div>
 
-        <div id="status" class="mt-6 p-3 rounded bg-slate-900/50 text-xs font-mono text-slate-500 border border-slate-800">
-            System Idle. Waiting for discovery...
+        <div id="status" class="mt-6 p-3 rounded bg-slate-900/50 text-xs font-mono text-slate-400 border border-slate-800 break-all">
+            Initializing subsystem...
         </div>
     </div>
 
-    <!-- Google Cast SDK -->
+    <!-- Required for Cast SDK initialization -->
+    <script>
+        window.__onGCastApiAvailable = function(isAvailable) {
+            if (isAvailable) {
+                initializeCastApi();
+            } else {
+                document.getElementById('status').innerText = "System Error: Cast API hardware discovery failed.";
+            }
+        };
+
+        function initializeCastApi() {
+            // Safety check for global 'cast' object
+            if (typeof cast === 'undefined' || !cast.framework) {
+                setTimeout(initializeCastApi, 100);
+                return;
+            }
+
+            const context = cast.framework.CastContext.getInstance();
+            context.setOptions({
+                receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+                autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
+            });
+
+            document.getElementById('status').innerText = "System Ready. Connect to node via Cast icon.";
+        }
+    </script>
+
+    <!-- Load SDK at the end to ensure DOM readiness -->
     <script type="text/javascript" src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
     
     <script>
         const statusEl = document.getElementById('status');
         const mediaInput = document.getElementById('mediaUrl');
-        const fileInput = document.getElementById('localFile');
         const broadcastBtn = document.getElementById('broadcastBtn');
 
-        const updateStatus = (msg) => {
+        const log = (msg) => {
             statusEl.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
         };
 
-        // Initialize Cast Framework
-        window.__onGCastApiAvailable = function(isAvailable) {
-            if (isAvailable) {
-                initializeCastApi();
-            } else {
-                updateStatus("System Error: Cast SDK unavailable.");
-            }
-        };
-
-        function initializeCastApi() {
-            cast.framework.CastContext.getInstance().setOptions({
-                receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
-                autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
-            });
-            updateStatus("SDK Initialized. Ready for node discovery.");
-        }
-
         async function launchMedia() {
-            const castSession = cast.framework.CastContext.getInstance().getCurrentSession();
-            
-            if (!castSession) {
-                updateStatus("Error: No active session. Select a device first.");
+            // Re-verify cast presence in case of late loading
+            if (typeof cast === 'undefined') {
+                log("Error: Cast SDK not loaded.");
                 return;
             }
 
-            let url = mediaInput.value;
+            const context = cast.framework.CastContext.getInstance();
+            const session = context.getCurrentSession();
             
-            // Local file handling via Blob URI
-            // Note: In a browser, the receiver must have access to the sender's origin
-            // Local blobs often fail on Chromecast due to network isolation.
-            if (fileInput.files.length > 0) {
-                const file = fileInput.files[0];
-                url = URL.createObjectURL(file);
-                updateStatus(`Proxying local blob: ${file.name}`);
+            if (!session) {
+                log("Error: No active Cast session. Tap the Cast icon.");
+                return;
             }
 
+            const url = mediaInput.value.trim();
             if (!url) {
-                updateStatus("Error: No payload detected.");
+                log("Error: No URL provided.");
                 return;
             }
 
             const mediaInfo = new chrome.cast.media.MediaInfo(url, 'video/mp4');
             mediaInfo.metadata = new chrome.cast.media.GenericMediaMetadata();
-            mediaInfo.metadata.metadataType = chrome.cast.media.MetadataType.GENERIC;
-            mediaInfo.metadata.title = "Network Stream Relay";
-
+            mediaInfo.metadata.title = "Direct Network Stream";
+            
             const request = new chrome.cast.media.LoadRequest(mediaInfo);
             
             try {
-                await castSession.loadMedia(request);
-                updateStatus("Transmission successful. Stream active.");
+                log("Transmitting payload...");
+                await session.loadMedia(request);
+                log("Success: Playback initiated on target node.");
             } catch (err) {
-                updateStatus(`Transmission Failure: ${err}`);
-                console.error(err);
+                log(`Transmission failed: ${err}`);
+                console.error("Cast Error:", err);
             }
         }
 
         broadcastBtn.addEventListener('click', launchMedia);
-
-        // UI Logic: Disable URL if file is selected
-        fileInput.addEventListener('change', () => {
-            if (fileInput.files.length > 0) mediaInput.value = "";
-        });
-        mediaInput.addEventListener('input', () => {
-            if (mediaInput.value) fileInput.value = "";
-        });
     </script>
 </body>
 </html>
