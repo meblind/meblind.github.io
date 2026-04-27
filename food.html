@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dietary Constraint Recipe Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; background-color: #f8fafc; color: #0f172a; }
+        .spinner { border: 3px solid rgba(0,0,0,0.1); width: 24px; height: 24px; border-radius: 50%; border-left-color: #0f172a; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const apiKey = "";
+
+        // Core systemic utilities
+        const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+        
+        const fetchWithRetry = async (url, options, retries = 5) => {
+            const delays = [1000, 2000, 4000, 8000, 16000];
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return await response.json();
+                } catch (err) {
+                    if (i === retries - 1) throw err;
+                    await delay(delays[i]);
+                }
+            }
+        };
+
+        const parseCSV = (str) => {
+            const rows = [];
+            let row = [], curr = '', inQuotes = false;
+            for (let i = 0; i < str.length; i++) {
+                const char = str[i];
+                if (char === '"') inQuotes = !inQuotes;
+                else if (char === ',' && !inQuotes) { row.push(curr.trim()); curr = ''; }
+                else if (char === '\n' && !inQuotes) { row.push(curr.trim()); rows.push(row); row = []; curr = ''; }
+                else if (char !== '\r') curr += char;
+            }
+            if (curr) row.push(curr.trim());
+            if (row.length) rows.push(row);
+            return rows;
+        };
+
+        function App() {
+            // Initial state populated with parameters extracted from the provided document snippet
+            const [intolerances, setIntolerances] = React.useState([
+                "Cow's Milk", "Egg Yolk", "Egg White", "Goat's Milk Cheese",
+                "Mozzarella Cheese", "Buttermilk", "Sheep's Milk", "Wheat",
+                "Gluten", "Beans", "Camembert Cheese", "Parmesan Cheese"
+            ]);
+            const [recipeType, setRecipeType] = React.useState("Random");
+            const [output, setOutput] = React.useState(null);
+            const [loading, setLoading] = React.useState(false);
+            const [error, setError] = React.useState(null);
+
+            const handleFileUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const data = parseCSV(event.target.result);
+                    if (data.length < 2) return setError("Invalid structural schema in CSV.");
+                    const headers = data[0].map(h => h.toLowerCase().replace(/[\n\r]/g, ''));
+                    const foodIdx = headers.findIndex(h => h.includes('food product'));
+                    const levelIdx = headers.findIndex(h => h.includes('intolerance level'));
+                    
+                    if (foodIdx === -1 || levelIdx === -1) return setError("Required structural vectors (Food Product, Intolerance Level) missing.");
+                    
+                    const extracted = data.slice(1)
+                        .filter(row => row[levelIdx] && ["Very High", "High", "Moderate"].includes(row[levelIdx]))
+                        .map(row => row[foodIdx])
+                        .filter(Boolean);
+                    
+                    setIntolerances([...new Set(extracted)]);
+                    setError(null);
+                };
+                reader.readAsText(file);
+            };
+
+            const generateRecipe = async () => {
+                if (!apiKey) return setError("Systemic constraint: API key not defined in execution environment.");
+                setLoading(true);
+                setError(null);
+                setOutput(null);
+
+                try {
+                    // Phase 1: Syntactic Recipe Generation
+                    const systemPrompt = `You are an expert culinary architect. Generate a recipe utilizing strict dietary constraints.`;
+                    const userQuery = `Generate a ${recipeType === 'Random' ? 'highly creative' : recipeType} recipe. 
+CRITICAL NEGATIVE CONSTRAINT: Absolutely exclude the following ingredients and any of their derivatives: ${intolerances.join(', ')}.
+Ensure nutritional balance and complex flavor profiles without utilizing the restricted items.`;
+
+                    const textPayload = {
+                        contents: [{ parts: [{ text: userQuery }] }],
+                        systemInstruction: { parts: [{ text: systemPrompt }] },
+                        generationConfig: {
+                            responseMimeType: "application/json",
+                            responseSchema: {
+                                type: "OBJECT",
+                                properties: {
+                                    title: { type: "STRING" },
+                                    description: { type: "STRING" },
+                                    ingredients: { type: "ARRAY", items: { type: "STRING" } },
+                                    instructions: { type: "ARRAY", items: { type: "STRING" } },
+                                    visualPrompt: { type: "STRING", description: "A highly detailed, photorealistic prompt for an AI image generator describing the finished dish." }
+                                },
+                                required: ["title", "description", "ingredients", "instructions", "visualPrompt"]
+                            }
+                        }
+                    };
+
+                    const textRes = await fetchWithRetry(
+                        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+                        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(textPayload) }
+                    );
+
+                    const recipeData = JSON.parse(textRes.candidates[0].content.parts[0].text);
+
+                    // Phase 2: Visual Rendering
+                    const imagePayload = {
+                        instances: { prompt: `Photorealistic, high-end food photography, studio lighting. ${recipeData.visualPrompt}` },
+                        parameters: { sampleCount: 1 }
+                    };
+
+                    const imageRes = await fetchWithRetry(
+                        `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`,
+                        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(imagePayload) }
+                    );
+
+                    recipeData.imageUrl = `data:image/png;base64,${imageRes.predictions[0].bytesBase64Encoded}`;
+                    setOutput(recipeData);
+
+                } catch (err) {
+                    setError(`Execution failure: ${err.message}`);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="max-w-5xl mx-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-8">
+                    {/* Control Panel */}
+                    <div className="md:col-span-1 space-y-6">
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                            <h2 className="text-lg font-bold mb-4 tracking-tight">Systemic Constraints</h2>
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium mb-2 text-slate-600">Update Dietary Matrix (CSV)</label>
+                                <input type="file" accept=".csv" onChange={handleFileUpload} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer" />
+                            </div>
+                            <div>
+                                <h3 className="text-xs font-semibold uppercase text-slate-400 mb-2">Active Exclusions ({intolerances.length})</h3>
+                                <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-2 bg-slate-50 rounded border border-slate-100">
+                                    {intolerances.map(item => (
+                                        <span key={item} className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-md font-medium">{item}</span>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                            <h2 className="text-lg font-bold mb-4 tracking-tight">Generation Parameters</h2>
+                            <label className="block text-sm font-medium mb-2 text-slate-600">Target Vector</label>
+                            <select 
+                                value={recipeType} 
+                                onChange={(e) => setRecipeType(e.target.value)}
+                                className="w-full p-2 mb-4 border border-slate-300 rounded-md bg-slate-50 text-slate-900 focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                            >
+                                {["Random", "Breakfast", "Lunch", "Dinner", "Dessert", "Snack"].map(t => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                            <button 
+                                onClick={generateRecipe} 
+                                disabled={loading}
+                                className="w-full bg-slate-900 text-white font-semibold py-3 px-4 rounded-md hover:bg-slate-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {loading ? <div className="spinner border-l-white"></div> : 'Execute Generation'}
+                            </button>
+                        </div>
+                        {error && <div className="p-4 bg-red-50 text-red-900 border border-red-200 rounded-lg text-sm">{error}</div>}
+                    </div>
+
+                    {/* Output Interface */}
+                    <div className="md:col-span-2">
+                        {loading && !output && (
+                            <div className="h-full min-h-[400px] flex flex-col items-center justify-center text-slate-400 bg-white rounded-xl shadow-sm border border-slate-200 border-dashed">
+                                <div className="spinner mb-4 w-8 h-8"></div>
+                                <p className="text-sm font-medium">Computing topological nutrition matrix and visual rendering...</p>
+                            </div>
+                        )}
+                        
+                        {output && !loading && (
+                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                                {output.imageUrl && (
+                                    <img src={output.imageUrl} alt={output.title} className="w-full h-80 object-cover border-b border-slate-200" />
+                                )}
+                                <div className="p-8">
+                                    <h1 className="text-3xl font-bold mb-2 tracking-tight">{output.title}</h1>
+                                    <p className="text-slate-600 mb-8 italic">{output.description}</p>
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                        <div className="md:col-span-1">
+                                            <h3 className="text-lg font-bold mb-4 border-b pb-2">Component Protocol</h3>
+                                            <ul className="space-y-2 text-sm text-slate-700">
+                                                {output.ingredients.map((ing, i) => (
+                                                    <li key={i} className="flex items-start">
+                                                        <span className="mr-2 mt-1 text-slate-400">•</span>
+                                                        <span>{ing}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <h3 className="text-lg font-bold mb-4 border-b pb-2">Execution Sequence</h3>
+                                            <ol className="space-y-4 text-sm text-slate-700 list-decimal list-inside marker:font-bold marker:text-slate-900">
+                                                {output.instructions.map((inst, i) => (
+                                                    <li key={i} className="pl-2 leading-relaxed">{inst}</li>
+                                                ))}
+                                            </ol>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {!output && !loading && (
+                            <div className="h-full min-h-[400px] flex items-center justify-center text-slate-400 bg-slate-100 rounded-xl border border-slate-200 border-dashed">
+                                <p className="text-sm font-medium">System awaiting execution trigger.</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+    </script>
+</body>
+</html>
