@@ -119,7 +119,10 @@
 <body class="bg-brandBg text-slate-800 transition-colors duration-200 print:bg-white print:text-black">
     <div id="root"></div>
 
-    <script type="text/babel" data-presets="react,env">
+   <script type="module">
+        import React from "https://esm.sh/react";
+        import ReactDOM from "https://esm.sh/react-dom/client";
+
         const { useState, useEffect, useMemo, useCallback, memo, useRef } = React;
 
         const idb = {
