@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="lt" class="transition-colors duration-200">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalių Briaunavimas (v2026)</title>
+    <link class="print:hidden" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='none' stroke='%23ef3b46' stroke-width='6' stroke-linejoin='round' stroke-linecap='round'%3E%3Ccircle cx='40' cy='45' r='12'/%3E%3Cpath d='M 66.2 55 A 28 28 0 1 0 40 73 L 90 73 L 80 55 Z'/%3E%3C/g%3E%3C/svg%3E">
+    
+    <!-- External Libs -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['var(--font-base)'] },
+                    spacing: { '3.5': 'var(--row-py)' },
+                    borderRadius: { 'md': 'var(--radius)', 'lg': 'var(--radius)', 'xl': 'var(--radius)' },
+                    colors: {
+                        white: 'var(--bg-main)',
+                        brandBg: 'var(--bg-brand)',
+                        brandBlue: 'var(--color-primary)',
+                        brandHover: 'var(--color-primary-hover)',
+                        brandRed: 'var(--color-danger)',
+                        slate: {
+                            50: 'rgb(var(--slate-50) / <alpha-value>)', 100: 'rgb(var(--slate-100) / <alpha-value>)',
+                            200: 'rgb(var(--slate-200) / <alpha-value>)', 300: 'rgb(var(--slate-300) / <alpha-value>)',
+                            400: 'rgb(var(--slate-400) / <alpha-value>)', 500: 'rgb(var(--slate-500) / <alpha-value>)',
+                            600: 'rgb(var(--slate-600) / <alpha-value>)', 700: 'rgb(var(--slate-700) / <alpha-value>)',
+                            800: 'rgb(var(--slate-800) / <alpha-value>)', 900: 'rgb(var(--slate-900) / <alpha-value>)'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Perceptual Color Engine - OKLCH Color Space with Standard Utility Mappings */
+        :root, [data-theme="light"] {
+            --bg-brand: oklch(0.96 0.01 190);
+            --bg-main: oklch(1.00 0 0);
+            --color-primary: oklch(0.35 0.08 240);
+            --color-primary-hover: oklch(0.28 0.07 240);
+            --color-danger: oklch(0.58 0.22 25);
+            --radius: 1rem;
+            --row-py: 0.9rem;
+            
+            --slate-50: 248 250 252; --slate-100: 241 245 249; --slate-200: 226 232 240;
+            --slate-300: 203 213 225; --slate-400: 148 163 184; --slate-500: 100 116 139;
+            --slate-600: 71 85 105; --slate-700: 51 65 85; --slate-800: 30 41 59; --slate-900: 15 23 42;
+            
+            --font-base: ui-sans-serif, system-ui, -apple-system, sans-serif;
+            --text-scale: 1.0;
+            --scroll-thumb: #cbd5e1; --scroll-hover: #94a3b8;
+        }
+        [data-theme="dark"] {
+            --bg-brand: oklch(0.14 0.02 240);
+            --bg-main: oklch(0.18 0.03 243);
+            --color-primary: oklch(0.78 0.14 200);
+            --color-primary-hover: oklch(0.84 0.12 200);
+            --color-danger: oklch(0.65 0.21 28);
+            
+            --slate-50: 30 41 59; --slate-100: 51 65 85; --slate-200: 71 85 105;
+            --slate-300: 100 116 139; --slate-400: 148 163 184; --slate-500: 203 213 225;
+            --slate-600: 226 232 240; --slate-700: 241 245 249; --slate-800: 248 250 252; --slate-900: 0 0 0;
+            
+            --scroll-thumb: #334155; --scroll-hover: #475569;
+        }
+
+        body { 
+            font-family: var(--font-base); 
+            font-size: calc(100% * var(--text-scale));
+            transition: background-color 0.3s ease, color 0.3s ease; 
+            overflow-x: hidden; 
+            font-variation-settings: "wght" 400, "wdth" 100;
+        }
+
+        /* Ambient Canvas overlay */
+        #three-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0.35;
+        }
+
+        /* Custom Bento Grid styling with Spring physics behavior simulation */
+        .bento-card {
+            background-color: var(--bg-main);
+            border: 1px solid rgb(var(--slate-200) / 0.5);
+            transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.35s ease;
+        }
+        .dark .bento-card {
+            border-color: rgb(var(--slate-800) / 0.8);
+        }
+        .bento-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px -5px rgba(0, 0, 0, 0.05), 0 8px 12px -6px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Container Query for Bento components */
+        .component-card {
+            container-type: inline-size;
+        }
+
+        @container (max-width: 540px) {
+            .grid-row-responsive {
+                grid-template-columns: 1fr !important;
+                gap: 0.5rem !important;
+                padding: 1rem !important;
+            }
+            .hide-on-mobile-container {
+                display: none !important;
+            }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 99px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--scroll-hover); }
+
+        @media print { 
+            body, html, #root { background-color: white !important; } 
+            #three-canvas { display: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-brandBg text-slate-800 print:bg-white print:text-black">
+    
+    <canvas id="three-canvas"></canvas>
+
+    <div id="root" class="relative z-10"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useCallback, memo, useRef } = React;
+        const idbFallbackStore = new Map();
+        
+        const idb = {
+            dbPromise: new Promise((resolve) => {
+                if (typeof indexedDB === 'undefined') {
+                    resolve(null);
+                    return;
+                }
+                const req = indexedDB.open('EdgeBandingCache2026', 1);
+                req.onupgradeneeded = e => {
+                    try {
+                        e.target.result.createObjectStore('csvStore');
+                    } catch (err) {
+                        console.error("IDB Upgrade Error:", err);
+                    }
+                };
+                req.onsuccess = e => resolve(e.target.result);
+                req.onerror = () => resolve(null);
+            }),
+            async get(key) {
+                try {
+                    const db = await this.dbPromise;
+                    if (!db) return idbFallbackStore.get(key);
+                    return new Promise((res) => {
+                        const tx = db.transaction('csvStore', 'readonly');
+                        const store = tx.objectStore('csvStore');
+                        const req = store.get(key);
+                        req.onsuccess = () => res(req.result);
+                        req.onerror = () => res(idbFallbackStore.get(key));
+                    });
+                } catch (e) {
+                    return idbFallbackStore.get(key);
+                }
+            },
+            async set(key, val) {
+                try {
+                    const db = await this.dbPromise;
+                    if (!db) {
+                        idbFallbackStore.set(key, val);
+                        return;
+                    }
+                    return new Promise((res) => {
+                        const tx = db.transaction('csvStore', 'readwrite');
+                        const store = tx.objectStore('csvStore');
+                        const req = store.put(val, key);
+                        req.onsuccess = () => res();
+                        req.onerror = () => {
+                            idbFallbackStore.set(key, val);
+                            res();
+                        };
+                    });
+                } catch (e) {
+                    idbFallbackStore.set(key, val);
+                }
+            }
+        };
+
+        function useDebounce(value, delay) {
+            const [debouncedValue, setDebouncedValue] = useState(value);
+            useEffect(() => {
+                const handler = setTimeout(() => setDebouncedValue(value), delay);
+                return () => clearTimeout(handler);
+            }, [value, delay]);
+            return debouncedValue;
+        }
+
+        const translations = {
+            lt: { title: "Briaunavimas", search: "Ieškoti (pavadinimas, kodas, matmenys)...", clearSearch: "Išvalyti paiešką", uploadCSV: "CSV įkėlimas", loading: "Nuskaitoma...", noPartsTitle: "Detalių nerasta", noPartsDesc: "Pakeiskite paieškos kriterijus arba nustatykite kolekcijos filtrą.", listTitle: "Gamybos matrica", showing: (x, y) => `Matrica: ${x} iš ${y}`, collection: "Kolekcija", name: "Detalių identifikacija", cutting: "Pjovimo parametras", final: "Galutinis parametras", pcs: "vnt.", cutDims: "Pjovimo matmenys", finalDims: "Paruošti matmenys", bandingSeq: "Briaunų dengimo seka", step: "žingsnis", close: "Uždaryti", errEmpty: "Failas tuščias.", errParse: "Skaitymo klaida. Patikrinkite CSV.", errRead: "Nepavyko perskaityti failo.", errFetch: "Nepavyko parsiųsti online duomenų. Rodoma vietinė talpykla.", notes: "Pastabos gamybai", editData: "Gamybos keitimas", rounded: "suapvalinta", fluted: "frezuota", thickness: "Briaunos storis", dimension: "Briaunos kraštinė", roundedCol: "Suapvalinta", flutedCol: "Frezuota", settings: "Nustatymai", language: "Kalba", textSize: "Teksto mastelis", theme: "Tema", themeLight: "Šviesi diena", themeDark: "Tamsi pamaina", allCollections: "Visos kolekcijos", partSelectPrompt: "Pasirinkite detalę iš dešiniosios gamybos matricos, kad pradėtumėte briaunų analizę." },
+            en: { title: "Edge Banding", search: "Search (name, code, dimensions)...", clearSearch: "Clear", uploadCSV: "Upload CSV", loading: "Parsing...", noPartsTitle: "No components", noPartsDesc: "Change filtering conditions or upload another CSV template.", listTitle: "Production Matrix", showing: (x, y) => `Showing ${x} of ${y}`, collection: "Collection", name: "Component identification", cutting: "Cut profile", final: "Finished profile", pcs: "pcs.", cutDims: "Cutting dimensions", finalDims: "Finished dimensions", bandingSeq: "Briaunų dengimo seka", step: "step", close: "Close", errEmpty: "Blank template received.", errParse: "Formatting error inside CSV template.", errRead: "Error loading local file.", errFetch: "Network failure. Reverting to persistent memory cache.", notes: "Operator notes", editData: "Modify Database", rounded: "rounded", fluted: "fluted", thickness: "Thickness", dimension: "Dimension", roundedCol: "Rounded", flutedCol: "Fluted", settings: "Settings", language: "Language", textSize: "Text Scale", theme: "Shift Mode", themeLight: "Day Shift", themeDark: "Night Shift", allCollections: "All collections", partSelectPrompt: "Select any component from the right-hand production matrix to initiate edge analysis." },
+            uk: { title: "Кромкування", search: "Пошук (назва, код, розміри)...", clearSearch: "Очистити", uploadCSV: "Завантажити CSV", loading: "Обробка...", noPartsTitle: "Компоненти відсутні", noPartsDesc: "Змініть умови пошуку або завантажте коректний CSV файл.", listTitle: "Виробнича матриця", showing: (x, y) => `Показано ${x} з ${y}`, collection: "Колекція", name: "Ідентифікація деталі", cutting: "Розмір порізки", final: "Розмір кромкування", pcs: "шт.", cutDims: "Розміри порізки", finalDims: "Кінцеві розміри", bandingSeq: "Послідовність кромкування", step: "крок", close: "Закрити", errEmpty: "Порожній файл.", errParse: "Неправильний формат CSV.", errRead: "Помилка завантаження файлу.", errFetch: "Помилка мережі. Показано локальну версію.", notes: "Примітки оператору", editData: "Редагувати дані", rounded: "заокруглено", fluted: "фрезеровано", thickness: "Товщина", dimension: "Розмір", roundedCol: "Заокруг.", flutedCol: "Фрезер.", settings: "Налаштування", language: "Мова", textSize: "Масштаб тексту", theme: "Режим зміни", themeLight: "Денна зміна", themeDark: "Нічна зміна", allCollections: "Всі колекції", partSelectPrompt: "Оберіть будь-який елемент з правої таблиці, щоб почати аналіз кромки." }
+        };
+
+        const defaultParts = [
+            {
+                id: '1',
+                code: 'S1-03',
+                name: '24 End Panel LR',
+                material: 'S1-02-51',
+                qty: 1,
+                cutL: 711,
+                cutW: 595,
+                cutT: 18,
+                finalL: 713,
+                finalW: 599,
+                finalT: 18,
+                displayCutL: '711',
+                displayCutW: '595',
+                displayFinalL: '713',
+                displayFinalW: '599',
+                edges: {
+                    step1: '0.4mm - 595',
+                    step2: '3mm - 711',
+                    step3: '3mm - 711 F',
+                    step4: '3mm - 595 A F'
+                },
+                parsedSteps: [
+                    { seq: 1, val: '0.4mm - 595', thickness: '0.4mm', dimension: '595', isRounded: false, isFluted: false },
+                    { seq: 2, val: '3mm - 711', thickness: '3mm', dimension: '711', isRounded: false, isFluted: false },
+                    { seq: 3, val: '3mm - 711 F', thickness: '3mm', dimension: '711', isRounded: false, isFluted: true },
+                    { seq: 4, val: '3mm - 595 A F', thickness: '3mm', dimension: '595', isRounded: true, isFluted: true }
+                ],
+                note: 'Dėmesio: atkreipti dėmesį į tekstūros kryptį frezuojant!',
+                _searchStr: 's1-03 24 end panel lr s1-02-51 711 595 18 711x595 595x711 711x595x18 713 599 18 713x599 599x713 713x599x18'
+            }
+        ];
+
+        const formatDimValue = (val, isUnknown) => {
+            if (isUnknown || !val || val === 0 || val === '0' || val === '?') return '?';
+            return val;
+        };
+
+        const HighlightedText = memo(({ text, regex }) => {
+            if (!text) return null;
+            const str = String(text);
+            if (!regex) return <>{str}</>;
+            const parts = str.split(regex);
+            return (
+                <>
+                    {parts.map((part, i) => {
+                        if (!part) return null;
+                        return i % 2 === 1 ? (
+                            <mark key={i} className="bg-brandRed/20 text-brandBlue rounded-[3px] px-0.5 font-bold shadow-sm">{part}</mark>
+                        ) : (
+                            <span key={i}>{part}</span>
+                        );
+                    })}
+                </>
+            );
+        });
+
+        // Skeleton loader components to avoid sudden visual shifts
+        const SkeletonGrid = memo(() => (
+            <div className="p-2 rounded-xl overflow-hidden animate-pulse">
+                <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-3 border-b border-slate-200/40">
+                    <div className="col-span-4 h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/3"></div>
+                    <div className="col-span-3 h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/2"></div>
+                    <div className="col-span-3 h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/2"></div>
+                    <div className="col-span-2 h-4 bg-slate-200 dark:bg-slate-700 rounded w-2/3 ml-auto"></div>
+                </div>
+                {[...Array(6)].map((_, i) => (
+                    <div key={i} className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 px-4 py-4 md:py-3 border-b border-slate-100 dark:border-slate-800/40 items-center">
+                        <div className="md:col-span-4 flex justify-between md:block"><div className="h-5 bg-slate-200 dark:bg-slate-700 rounded w-2/3"></div><div className="h-5 bg-slate-200 dark:bg-slate-700 rounded-full w-16 md:hidden"></div></div>
+                        <div className="md:col-span-3 flex flex-col md:block gap-1"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-12 md:hidden"></div><div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-24"></div></div>
+                        <div className="md:col-span-3 flex flex-col md:block gap-1"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-12 md:hidden"></div><div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-24"></div></div>
+                        <div className="hidden md:flex md:col-span-2 justify-end"><div className="h-6 bg-slate-200 dark:bg-slate-700 rounded-full w-16"></div></div>
+                    </div>
+                ))}
+            </div>
+        ));
+
+        const getEdgePath = (x1, y1, x2, y2, isIndefinite) => {
+            if (!isIndefinite) {
+                return `L ${x2} ${y2}`;
+            }
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const len = Math.sqrt(dx * dx + dy * dy);
+            const steps = Math.max(4, Math.floor(len / 8));
+            const nx = -dy / len;
+            const ny = dx / len;
+            const amp = 3.5;
+            let path = '';
+            for (let i = 1; i <= steps; i++) {
+                const t1 = (i - 0.75) / steps;
+                const t2 = (i - 0.25) / steps;
+                const t3 = i / steps;
+                const px1 = x1 + dx * t1 + nx * amp;
+                const py1 = y1 + dy * t1 + ny * amp;
+                const px2 = x1 + dx * t2 - nx * amp;
+                const py2 = y1 + dy * t2 - ny * amp;
+                const px3 = x1 + dx * t3;
+                const py3 = y1 + dy * t3;
+                path += ` C ${px1} ${py1}, ${px2} ${py2}, ${px3} ${py3}`;
+            }
+            return path;
+        };
+
+        // Custom High-Performance 2D Vector Canvas mapped to 2026 specs
+        const Part2DView = memo(({ length, width, steps, visibleCount, clipId, partName }) => {
+            const isKartotinis = partName && partName.toLowerCase().includes('kartotin');
+            const isLUnknown = isKartotinis && (!length || length === 0 || length === '?');
+            const isWUnknown = isKartotinis && (!width || width === 0 || width === '?');
+
+            let drawL = length;
+            let drawW = width;
+            if (isLUnknown) drawL = width ? width * 4.0 : 350;
+            if (isWUnknown) drawW = length ? length * 4.0 : 350;
+
+            let boardXDim = drawL;
+            let boardYDim = drawW;
+            let isRotated = false;
+
+            if (steps.length > 0) {
+                const firstStepVal = steps[0].val;
+                const valNormalized = firstStepVal.replace(',', '.');
+                const lStrForMatch = isLUnknown ? '\\?' : String(length);
+                const wStrForMatch = isWUnknown ? '\\?' : String(width);
+                const matchL = new RegExp('(^|\\D)' + lStrForMatch + '(\\D|$)').test(valNormalized);
+                const matchW = new RegExp('(^|\\D)' + wStrForMatch + '(\\D|$)').test(valNormalized);
+                if (matchW && !matchL) {
+                    boardXDim = drawW;
+                    boardYDim = drawL;
+                    isRotated = true;
+                }
+            }
+
+            const maxDim = Math.max(boardXDim, boardYDim) || 1;
+            const scale = 110 / maxDim;
+            const scaledX = boardXDim * scale;
+            const scaledY = boardYDim * scale;
+            const x = (120 - scaledX) / 2;
+            const y = (120 - scaledY) / 2;
+
+            const mappedEdges = { top: null, bottom: null, left: null, right: null };
+            const xStrForMatch = isRotated ? (isWUnknown ? '\\?' : String(width)) : (isLUnknown ? '\\?' : String(length));
+            const yStrForMatch = isRotated ? (isLUnknown ? '\\?' : String(length)) : (isWUnknown ? '\\?' : String(width));
+            const matchXPattern = new RegExp('(^|\\D)' + xStrForMatch + '(\\D|$)');
+            const matchYPattern = new RegExp('(^|\\D)' + yStrForMatch + '(\\D|$)');
+
+            steps.forEach((step, idx) => {
+                const valNormalized = step.val.replace(',', '.');
+                const thicknessPart = valNormalized.split('-')[0].trim();
+                const isThin = thicknessPart.includes('0.4');
+                const strokeWidth = isThin ? 3 : 7;
+                // High-fidelity production colors specified by the 2026 design system
+                const fill = isThin ? "#E5C19E" : "#D4A373"; 
+                const isRounded = valNormalized.toUpperCase().includes('A');
+                const isDoubleA = valNormalized.toUpperCase().includes('AA');
+                const isFluted = valNormalized.toUpperCase().includes('F');
+                let side = null;
+                const matchX = matchXPattern.test(valNormalized);
+                const matchY = matchYPattern.test(valNormalized);
+
+                if (idx === 0) {
+                    side = 'bottom';
+                } else if (matchX && !matchY) {
+                    if (!mappedEdges.bottom) side = 'bottom';
+                    else if (!mappedEdges.top) side = 'top';
+                } else if (matchY && !matchX) {
+                    if (!mappedEdges.left) side = 'left';
+                    else if (!mappedEdges.right) side = 'right';
+                } else {
+                    if (!mappedEdges.bottom) side = 'bottom';
+                    else if (!mappedEdges.top) side = 'top';
+                    else if (!mappedEdges.left) side = 'left';
+                    else if (!mappedEdges.right) side = 'right';
+                }
+                if (side) {
+                    mappedEdges[side] = { ...step, idx, fill, strokeWidth, isRounded, isDoubleA, isFluted, side };
+                }
+            });
+
+            const isActive = (side) => mappedEdges[side] && mappedEdges[side].idx < visibleCount;
+            const isThick = (side) => {
+                if (!isActive(side)) return false;
+                return !mappedEdges[side].val.replace(',', '.').split('-')[0].trim().includes('0.4');
+            };
+
+            let isTopIndefinite = false, isBottomIndefinite = false, isLeftIndefinite = false, isRightIndefinite = false;
+            if (isRotated) {
+                if (isLUnknown) { isTopIndefinite = true; isBottomIndefinite = true; }
+                if (isWUnknown) { isLeftIndefinite = true; isRightIndefinite = true; }
+            } else {
+                if (isLUnknown) { isLeftIndefinite = true; isRightIndefinite = true; }
+                if (isWUnknown) { isTopIndefinite = true; isBottomIndefinite = true; }
+            }
+
+            const nameHasLR = /(left|right|\blr\b)/i.test(partName || '');
+            const canRoundCorner = (edgeSide, otherSide) => {
+                if (!isActive(edgeSide)) return false;
+                const edge = mappedEdges[edgeSide];
+                if (!edge.isRounded) return false;
+                if (!nameHasLR) return true;
+                if (isThick(edgeSide) && isThick(otherSide)) return true;
+                if (isThick(edgeSide) && edge.isDoubleA) return true;
+                return false;
+            };
+
+            const R = 8;
+            const eps = 0.01;
+            let rtl = eps, rtr = eps, rbl = eps, rbr = eps;
+            let wantRtl = canRoundCorner('top', 'left') || canRoundCorner('left', 'top');
+            let wantRtr = canRoundCorner('top', 'right') || canRoundCorner('right', 'top');
+            let wantRbl = canRoundCorner('bottom', 'left') || canRoundCorner('left', 'bottom');
+            let wantRbr = canRoundCorner('bottom', 'right') || canRoundCorner('right', 'bottom');
+
+            if (isLeftIndefinite || isTopIndefinite) wantRtl = false;
+            if (isRightIndefinite || isTopIndefinite) wantRtr = false;
+            if (isLeftIndefinite || isBottomIndefinite) wantRbl = false;
+            if (isRightIndefinite || isBottomIndefinite) wantRbr = false;
+
+            if (wantRtl) rtl = R;
+            if (wantRtr) rtr = R;
+            if (wantRbl) rbl = R;
+            if (wantRbr) rbr = R;
+
+            const topEdge = getEdgePath(x + rtl, y, x + scaledX - rtr, y, isTopIndefinite);
+            const rightEdge = getEdgePath(x + scaledX, y + rtr, x + scaledX, y + scaledY - rbr, isRightIndefinite);
+            const bottomEdge = getEdgePath(x + scaledX - rbr, y + scaledY, x + rbl, y + scaledY, isBottomIndefinite);
+            const leftEdge = getEdgePath(x, y + scaledY - rbl, x, y + rtl, isLeftIndefinite);
+
+            const boardPathD = `M ${x + rtl} ${y} ${topEdge} A ${rtr} ${rtr} 0 0 1 ${x + scaledX} ${y + rtr} ${rightEdge} A ${rbr} ${rbr} 0 0 1 ${x + scaledX - rbr} ${y + scaledY} ${bottomEdge} A ${rbl} ${rbl} 0 0 1 ${x} ${y + scaledY - rbl} ${leftEdge} A ${rtl} ${rtl} 0 0 1 ${x + rtl} ${y} Z`;
+
+            const displayL = formatDimValue(length, isLUnknown);
+            const displayW = formatDimValue(width, isWUnknown);
+
+            return (
+                <div className="w-full h-64 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-200/50 dark:border-slate-800/80 overflow-hidden relative flex justify-center items-center transition-colors">
+                    <span className="absolute top-2 left-2 text-[0.625rem] text-slate-400 font-bold uppercase tracking-wider z-10">
+                        2D Profilis
+                    </span>
+                    <svg viewBox="0 0 120 120" className="w-full h-full max-w-[280px] max-h-[280px] p-2">
+                        <defs>
+                            <pattern id={`wood-grain-${clipId}`} width="100" height="20" patternUnits="userSpaceOnUse" patternTransform={isRotated ? "rotate(90)" : ""}>
+                                <path d="M0,2 Q25,0 50,2 T100,2 M0,6 Q25,8 50,6 T100,6 M0,10 Q25,9 50,10 T100,10" fill="none" stroke="currentColor" strokeWidth="0.4" opacity="0.3" />
+                            </pattern>
+                            <clipPath id={`board-clip-${clipId}`}>
+                                <path d={boardPathD} style={{ transition: 'd 0.3s cubic-bezier(0.25, 1, 0.5, 1)' }} />
+                            </clipPath>
+                        </defs>
+                        <g clipPath={`url(#board-clip-${clipId})`}>
+                            <rect x={x} y={y} width={scaledX} height={scaledY} fill="rgb(var(--slate-100))" />
+                            <rect x={x} y={y} width={scaledX} height={scaledY} fill={`url(#wood-grain-${clipId})`} className="text-slate-300 dark:text-slate-600 pointer-events-none" />
+                            {Object.values(mappedEdges).filter(Boolean).map(edge => {
+                                const isVis = edge.idx < visibleCount;
+                                const bw = edge.strokeWidth;
+                                let bx = x, by = y, bwr = scaledX, bhr = scaledY;
+
+                                if (edge.side === 'top') bhr = bw;
+                                if (edge.side === 'bottom') { by = y + scaledY - bw; bhr = bw; }
+                                if (edge.side === 'left') bwr = bw;
+                                if (edge.side === 'right') { bx = x + scaledX - bw; bwr = bw; }
+
+                                const fluteLines = [];
+                                if (edge.isFluted && isVis) {
+                                    const len = edge.side === 'top' || edge.side === 'bottom' ? bwr : bhr;
+                                    const actualInset = Math.min(8, len * 0.15);
+                                    const spacing = bw * 0.25;
+                                    const center = bw / 2;
+
+                                    for (let i = -1; i <= 1; i++) {
+                                        const offset = center + (i * spacing);
+                                        let lx1 = 0, ly1 = 0, lx2 = 0, ly2 = 0;
+                                        if (edge.side === 'top' || edge.side === 'bottom') {
+                                            lx1 = bx + actualInset; lx2 = bx + bwr - actualInset;
+                                            ly1 = by + offset; ly2 = by + offset;
+                                        } else {
+                                            lx1 = bx + offset; lx2 = bx + offset;
+                                            ly1 = by + actualInset; ly2 = by + bhr - actualInset;
+                                        }
+                                        fluteLines.push(
+                                            <line key={i} x1={lx1} y1={ly1} x2={lx2} y2={ly2} stroke="#3b2314" strokeWidth="0.5" opacity="0.8" />
+                                        );
+                                    }
+                                }
+
+                                return (
+                                    <g key={edge.idx} style={{ opacity: isVis ? 1 : 0, transition: 'opacity 0.2s ease-in-out' }}>
+                                        <rect x={bx} y={by} width={bwr} height={bhr} fill={edge.fill} />
+                                        {fluteLines}
+                                    </g>
+                                );
+                            })}
+                        </g>
+                        <path d={boardPathD} fill="none" stroke="rgb(var(--slate-300))" strokeWidth="1" style={{ transition: 'd 0.3s cubic-bezier(0.25, 1, 0.5, 1)' }} className="pointer-events-none" />
+                        <text x="60" y="60" textAnchor="middle" dominantBaseline="middle" fill="rgb(var(--slate-500))" fontSize="7" fontWeight="bold" opacity="0.7">
+                            {displayL}x{displayW}
+                        </text>
+                    </svg>
+                    <div className="absolute top-2 right-2 text-[0.625rem] text-slate-400 font-mono">
+                        {isRotated ? `W = ${displayW}` : `L = ${displayL}`}
+                    </div>
+                </div>
+            );
+        });
+
+        // Left Visualizer Bento Block
+        const DetailVisualizerBento = ({ part, t, onClose, isSidebar = false }) => {
+            if (!part) {
+                return (
+                    <div className="flex flex-col items-center justify-center p-8 text-center h-full min-h-[400px] border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                        <svg className="w-12 h-12 text-slate-300 dark:text-slate-600 mb-4 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                        <p className="text-sm text-slate-400 font-medium max-w-xs">{t.partSelectPrompt}</p>
+                    </div>
+                );
+            }
+
+            const steps = part.parsedSteps || [];
+            const [visibleCount, setVisibleCount] = useState(0);
+
+            useEffect(() => {
+                if (steps.length === 0) return;
+                setVisibleCount(0);
+                const interval = setInterval(() => {
+                    setVisibleCount(prev => (prev >= steps.length ? 0 : prev + 1));
+                }, 800);
+                return () => clearInterval(interval);
+            }, [steps.length, part.id]);
+
+            return (
+                <div className="flex flex-col h-full">
+                    <div className="flex justify-between items-start gap-3 pb-4 border-b border-slate-100 dark:border-slate-800/60">
+                        <div>
+                            <span className="text-xs font-bold text-brandRed tracking-widest uppercase">{part.code}</span>
+                            <h3 className="font-bold text-brandBlue dark:text-sky-400 text-lg sm:text-xl truncate" title={part.name}>{part.name}</h3>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/50 dark:border-slate-700 text-xs font-bold px-2.5 py-1 rounded-md shadow-sm">{part.qty} {t.pcs}</span>
+                            {onClose && (
+                                <button onClick={onClose} className="text-slate-400 hover:text-brandRed p-1 transition-colors" aria-label={t.close}>
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="py-4 flex-grow flex flex-col gap-4 overflow-y-auto max-h-[70vh] pr-1">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-slate-50/50 dark:bg-slate-900/40 p-3 rounded-lg border border-slate-200/50 dark:border-slate-800 text-center">
+                                <span className="block text-[0.625rem] text-slate-400 font-bold uppercase tracking-wider mb-1 text-left">{t.cutDims}</span>
+                                <div className="flex items-center justify-center text-sm font-bold">
+                                    <span className="text-slate-800 dark:text-slate-100">{part.displayCutL}</span>
+                                    <span className="mx-1 text-slate-300">×</span>
+                                    <span className="text-slate-800 dark:text-slate-100">{part.displayCutW}</span>
+                                    <span className="mx-1 text-slate-300">×</span>
+                                    <span className="text-slate-400 dark:text-slate-500">{part.cutT}</span>
+                                </div>
+                            </div>
+                            <div className="bg-blue-50/20 dark:bg-blue-950/10 p-3 rounded-lg border border-blue-100/50 dark:border-blue-900/30 text-center">
+                                <span className="block text-[0.625rem] text-brandBlue dark:text-sky-400 font-bold uppercase tracking-wider mb-1 text-left">{t.finalDims}</span>
+                                <div className="flex items-center justify-center text-sm font-bold text-brandBlue dark:text-sky-400">
+                                    <span>{part.displayFinalL}</span>
+                                    <span className="mx-1 opacity-50">×</span>
+                                    <span>{part.displayFinalW}</span>
+                                    <span className="mx-1 opacity-50">×</span>
+                                    <span className="opacity-70">{part.finalT}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="w-full">
+                            <Part2DView length={part.cutL} width={part.cutW} steps={steps} visibleCount={visibleCount} clipId={part.id} partName={part.name} />
+                        </div>
+
+                        {part.note && (
+                            <div className="bg-red-50/30 dark:bg-red-950/10 p-3 rounded-lg border border-red-100/50 dark:border-red-900/30">
+                                <div className="flex items-center gap-1.5 mb-1 text-brandRed font-bold text-xs uppercase tracking-wider">
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                    <span>{t.notes}</span>
+                                </div>
+                                <p className="text-xs text-slate-700 dark:text-slate-300 font-medium whitespace-pre-wrap leading-relaxed">{part.note}</p>
+                            </div>
+                        )}
+
+                        <div className="flex flex-col">
+                            <span className="text-[0.625rem] text-slate-400 font-bold uppercase tracking-wider mb-2 pl-1">{t.bandingSeq}</span>
+                            {steps.length > 0 ? (
+                                <div className="border border-slate-200/50 dark:border-slate-800 rounded-lg overflow-hidden flex flex-col bg-white dark:bg-slate-900">
+                                    <div className="grid grid-cols-[2rem_2fr_2fr_1fr_1fr] gap-2 bg-slate-50/80 dark:bg-slate-800/40 px-3 py-2 border-b border-slate-200/50 dark:border-slate-800 text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">
+                                        <div className="text-center">#</div>
+                                        <div>{t.thickness}</div>
+                                        <div>{t.dimension}</div>
+                                        <div className="text-center">{t.roundedCol[0]}</div>
+                                        <div className="text-center">{t.flutedCol[0]}</div>
+                                    </div>
+                                    <div className="divide-y divide-slate-100 dark:divide-slate-800/40">
+                                        {steps.map((s, idx) => {
+                                            const isActive = idx < visibleCount;
+                                            const isCurrent = idx === visibleCount - 1;
+                                            const bgClass = isCurrent ? "bg-blue-50/40 dark:bg-blue-950/20" : (isActive ? "bg-white dark:bg-slate-900" : "bg-slate-50/10 dark:bg-slate-950/5");
+                                            const textClass = isActive ? "text-slate-800 dark:text-slate-200" : "text-slate-400 dark:text-slate-600";
+                                            const numClass = isCurrent ? "bg-brandBlue text-white shadow-sm scale-105 font-bold" : (isActive ? "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold" : "bg-white dark:bg-slate-800 text-slate-400 border border-slate-200/50 dark:border-slate-700");
+
+                                            return (
+                                                <div key={idx} className={`grid grid-cols-[2rem_2fr_2fr_1fr_1fr] gap-2 px-3 py-2 items-center transition-all duration-200 ${bgClass} ${textClass}`}>
+                                                    <div className={`flex items-center justify-center w-5 h-5 rounded-full text-[0.625rem] transition-all duration-200 ${numClass}`}>{s.seq}</div>
+                                                    <div className={`text-xs ${isActive ? 'font-bold' : 'font-medium'}`}>{s.thickness}</div>
+                                                    <div className={`text-xs flex items-center ${isActive ? 'font-bold text-brandBlue dark:text-sky-400' : 'font-medium'}`}>
+                                                        {s.dimension}
+                                                        {isCurrent && (
+                                                            <span className="flex h-1.5 w-1.5 relative ml-1.5 shrink-0">
+                                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brandBlue dark:bg-sky-400 opacity-75"></span>
+                                                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-brandBlue dark:bg-sky-400"></span>
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex justify-center">
+                                                        {s.isRounded ? (
+                                                            <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'}`}></div>
+                                                        ) : (
+                                                            <span className="text-slate-300 dark:text-slate-700">-</span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex justify-center">
+                                                        {s.isFluted ? (
+                                                            <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-amber-500' : 'bg-slate-300 dark:bg-slate-700'}`}></div>
+                                                        ) : (
+                                                            <span className="text-slate-300 dark:text-slate-700">-</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200/50 dark:border-slate-800 rounded-lg py-6 flex items-center justify-center">
+                                    <span className="text-xs font-semibold text-slate-400">-</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const GridRow = memo(({ part, isSelected, onClick, t, searchRegex }) => {
+            return (
+                <div 
+                    onClick={() => onClick(part)} 
+                    tabIndex="0" 
+                    onKeyDown={(e) => e.key === 'Enter' && onClick(part)}
+                    className={`gsap-row grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 px-4 py-3 items-center border-b border-slate-100 dark:border-slate-800/40 last:border-0 hover:bg-slate-50/60 dark:hover:bg-slate-800/20 focus:bg-slate-50 dark:focus:bg-slate-800/40 outline-none cursor-pointer interactive-row transition-all ${isSelected ? 'bg-blue-50/40 dark:bg-blue-950/15 border-l-4 border-l-brandBlue' : 'border-l-4 border-l-transparent'}`}
+                >
+                    <div className="md:col-span-5 flex justify-between items-start md:block pl-1">
+                        <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 group-hover:text-brandBlue transition-colors">
+                            <HighlightedText text={part.name} regex={searchRegex} />
+                        </span>
+                        <span className="md:hidden bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[0.625rem] font-bold px-2 py-0.5 rounded-md shadow-sm">
+                            <HighlightedText text={part.code} regex={searchRegex} />
+                        </span>
+                    </div>
+                    
+                    <div className="flex gap-4 md:contents text-xs mt-1 md:mt-0">
+                        <div className="md:col-span-3 flex flex-col md:block justify-center">
+                            <span className="md:hidden text-slate-400 text-[0.625rem] font-bold uppercase tracking-wider mb-0.5">{t.cutting}</span>
+                            <div className="flex items-center text-xs">
+                                <span className="text-slate-700 dark:text-slate-300 font-medium">
+                                    <HighlightedText text={part.displayCutL} regex={searchRegex} />
+                                </span>
+                                <span className="mx-1 text-slate-300">×</span>
+                                <span className="text-slate-700 dark:text-slate-300 font-medium">
+                                    <HighlightedText text={part.displayCutW} regex={searchRegex} />
+                                </span>
+                                <span className="mx-1 text-slate-300">×</span>
+                                <span className="text-slate-500">
+                                    <HighlightedText text={part.cutT} regex={searchRegex} />
+                                </span>
+                            </div>
+                        </div>
+                        <div className="md:col-span-3 flex flex-col md:block justify-center">
+                            <span className="md:hidden text-brandBlue/70 text-[0.625rem] font-bold uppercase tracking-wider mb-0.5">{t.final}</span>
+                            <div className="flex items-center text-xs text-brandBlue dark:text-sky-400 bg-blue-50/50 dark:bg-blue-950/10 px-2 py-0.5 rounded border border-blue-100/30 dark:border-blue-900/20 w-fit">
+                                <span className="font-bold">
+                                    <HighlightedText text={part.displayFinalL} regex={searchRegex} />
+                                </span>
+                                <span className="mx-1 opacity-50">×</span>
+                                <span className="font-bold">
+                                    <HighlightedText text={part.displayFinalW} regex={searchRegex} />
+                                </span>
+                                <span className="mx-1 opacity-50">×</span>
+                                <span className="opacity-80">
+                                    <HighlightedText text={part.finalT} regex={searchRegex} />
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="hidden md:flex md:col-span-1 justify-end pr-1">
+                        <span className="bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[0.625rem] font-bold px-2 py-0.5 rounded shadow-sm">
+                            <HighlightedText text={part.code} regex={searchRegex} />
+                        </span>
+                    </div>
+                </div>
+            );
+        });
+
+        const App = () => {
+            const [lang, setLang] = useState(() => localStorage.getItem('app_lang') || 'lt');
+            const t = translations[lang];
+            const [searchTerm, setSearchTerm] = useState(() => localStorage.getItem('app_searchTerm') || '');
+            const debouncedSearchTerm = useDebounce(searchTerm, 200);
+            const [parts, setParts] = useState(defaultParts);
+            const [error, setError] = useState(null);
+            const [isLoading, setIsLoading] = useState(true);
+            const [selectedPart, setSelectedPart] = useState(defaultParts[0]);
+            const [selectedCollection, setSelectedCollection] = useState(() => localStorage.getItem('app_selectedCollection') || '');
+            const [renderLimit, setRenderLimit] = useState(50);
+            const loaderRef = useRef(null);
+            const [textScale, setTextScale] = useState(() => {
+                const saved = localStorage.getItem('app_textScale'); 
+                return saved ? parseInt(saved, 10) : 100;
+            });
+            const [theme, setTheme] = useState(() => {
+                const saved = localStorage.getItem('app_theme');
+                return (saved === 'light' || saved === 'dark') ? saved : 'light';
+            });
+            const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+            const settingsRef = useRef(null);
+            const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+
+            // 2026 Three.js Physical Component Simulation
+            useEffect(() => {
+                const canvas = document.getElementById('three-canvas');
+                if (!canvas) return;
+
+                const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                renderer.setSize(window.innerWidth, window.innerHeight);
+
+                const scene = new THREE.Scene();
+                const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+                camera.position.z = 22;
+
+                const count = 24;
+                const group = new THREE.Group();
+                const colorHex = theme === 'dark' ? 0x38bdf8 : 0x264a68;
+
+                for (let i = 0; i < count; i++) {
+                    const w = Math.random() * 4 + 1;
+                    const h = Math.random() * 2 + 0.5;
+                    const d = 0.08;
+                    const geometry = new THREE.BoxGeometry(w, h, d);
+                    const material = new THREE.MeshBasicMaterial({
+                        color: colorHex,
+                        wireframe: true,
+                        transparent: true,
+                        opacity: theme === 'dark' ? 0.06 : 0.03
+                    });
+                    const mesh = new THREE.Mesh(geometry, material);
+                    
+                    mesh.position.set(
+                        (Math.random() - 0.5) * 28,
+                        (Math.random() - 0.5) * 16,
+                        (Math.random() - 0.5) * 10
+                    );
+                    mesh.rotation.set(
+                        Math.random() * Math.PI,
+                        Math.random() * Math.PI,
+                        0
+                    );
+                    
+                    mesh.userData = {
+                        rotSpeedX: (Math.random() - 0.5) * 0.002,
+                        rotSpeedY: (Math.random() - 0.5) * 0.002,
+                        driftSpeedY: (Math.random() - 0.5) * 0.001
+                    };
+
+                    group.add(mesh);
+                }
+                scene.add(group);
+
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+                scene.add(ambientLight);
+
+                let mouseX = 0, mouseY = 0;
+                let targetX = 0, targetY = 0;
+                let lastTime = performance.now();
+
+                const handleMouseMove = (event) => {
+                    const currentTime = performance.now();
+                    const dt = (currentTime - lastTime) / 1000;
+                    lastTime = currentTime;
+
+                    const currentMouseX = (event.clientX - window.innerWidth / 2) * 0.0006;
+                    const currentMouseY = (event.clientY - window.innerHeight / 2) * 0.0006;
+                    
+                    const vx = (currentMouseX - mouseX) * dt;
+                    const vy = (currentMouseY - mouseY) * dt;
+
+                    mouseX = currentMouseX;
+                    mouseY = currentMouseY;
+
+                    targetX += vx * 0.8;
+                    targetY += vy * 0.8;
+                };
+
+                window.addEventListener('mousemove', handleMouseMove);
+
+                const handleResize = () => {
+                    camera.aspect = window.innerWidth / window.innerHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                };
+                window.addEventListener('resize', handleResize);
+
+                let reqId;
+                const tick = () => {
+                    targetX += (mouseX - targetX) * 0.05;
+                    targetY += (mouseY - targetY) * 0.05;
+
+                    group.rotation.y = targetX * 1.5;
+                    group.rotation.x = -targetY * 1.5;
+
+                    group.children.forEach(child => {
+                        child.rotation.x += child.userData.rotSpeedX;
+                        child.rotation.y += child.userData.rotSpeedY;
+                        child.position.y += child.userData.driftSpeedY;
+
+                        if (Math.abs(child.position.y) > 10) {
+                            child.position.y = -child.position.y;
+                        }
+                    });
+
+                    renderer.render(scene, camera);
+                    reqId = requestAnimationFrame(tick);
+                };
+                
+                tick();
+
+                return () => {
+                    cancelAnimationFrame(reqId);
+                    window.removeEventListener('mousemove', handleMouseMove);
+                    window.removeEventListener('resize', handleResize);
+                    renderer.dispose();
+                };
+            }, [theme]);
+
+            // Page Entrance kinetic effects
+            useEffect(() => {
+                if (!isLoading) {
+                    gsap.fromTo("header", 
+                        { y: -20, opacity: 0 }, 
+                        { y: 0, opacity: 1, duration: 0.5, ease: "power3.out" }
+                    );
+                    gsap.fromTo(".bento-main-grid", 
+                        { y: 15, opacity: 0 }, 
+                        { y: 0, opacity: 1, duration: 0.7, delay: 0.05, ease: "power3.out" }
+                    );
+                }
+            }, [isLoading]);
+
+            useEffect(() => {
+                if (!isLoading && visibleParts.length > 0) {
+                    gsap.fromTo(".gsap-row", 
+                        { opacity: 0, y: 10 }, 
+                        { opacity: 1, y: 0, duration: 0.4, stagger: 0.015, ease: "power2.out", overwrite: "auto" }
+                    );
+                }
+            }, [visibleParts, selectedCollection, isLoading]);
+
+            useEffect(() => { localStorage.setItem('app_lang', lang); }, [lang]);
+            useEffect(() => { localStorage.setItem('app_searchTerm', searchTerm); }, [searchTerm]);
+            useEffect(() => { localStorage.setItem('app_textScale', textScale.toString()); }, [textScale]);
+            useEffect(() => { localStorage.setItem('app_selectedCollection', selectedCollection); }, [selectedCollection]);
+
+            useEffect(() => {
+                document.documentElement.setAttribute('data-theme', theme);
+                if (theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+                localStorage.setItem('app_theme', theme);
+            }, [theme]);
+
+            useEffect(() => {
+                const handleClickOutside = (event) => {
+                    if (settingsRef.current && !settingsRef.current.contains(event.target)) setIsSettingsOpen(false);
+                };
+                document.addEventListener("mousedown", handleClickOutside);
+                return () => document.removeEventListener("mousedown", handleClickOutside);
+            }, []);
+
+            useEffect(() => {
+                document.documentElement.style.setProperty('--text-scale', (textScale / 100).toString());
+            }, [textScale]);
+
+            const handleSelectPart = useCallback((part) => {
+                setSelectedPart(part);
+                if (window.innerWidth < 768) {
+                    setIsMobileDrawerOpen(true);
+                }
+            }, []);
+
+            const parseCSV = useCallback((text) => {
+                const parseDim = (val, def = 0) => {
+                    if (!val) return def;
+                    const parsed = parseFloat(val.toString().replace(',', '.'));
+                    return isNaN(parsed) ? def : parsed;
+                };
+
+                const formatEdge = (type, len, isKartotinis) => {
+                    if (!type) return null;
+                    const tStr = type.trim();
+                    if (tStr === '0' || tStr === '-') return null;
+                    if (isKartotinis) {
+                        const lStr = len ? len.trim() : '';
+                        if (lStr === '0' || lStr === '-' || !lStr) return `${tStr} - ?`;
+                        return `${tStr} - ${lStr}`;
+                    }
+                    const lStr = len ? len.trim() : '';
+                    return (lStr !== '0' && lStr !== '-' && lStr !== '') ? `${tStr} - ${lStr}` : null;
+                };
+
+                Papa.parse(text, {
+                    header: false, 
+                    skipEmptyLines: true,
+                    complete: (results) => {
+                        try {
+                            if (!results.data?.length) throw new Error(t.errEmpty);
+                            const newParts = [];
+                            for (let i = 0; i < results.data.length; i++) {
+                                const cols = results.data[i];
+                                const rawCutL = cols[5];
+                                if (!rawCutL && rawCutL !== 0) continue;
+                                const strictCheckDim = parseFloat(rawCutL.toString().replace(',', '.'));
+                                const isKartotinisRow = (cols[2] || '').toLowerCase().includes('kartotin');
+                                if (!isKartotinisRow && (cols.length < 10 || isNaN(strictCheckDim))) continue;
+                                                                                
+                                const cutL = parseDim(rawCutL, 0); 
+                                const cutW = parseDim(cols[6], 0); 
+                                const cutT = parseDim(cols[7], 18);
+                                const finalL = parseDim(cols[8], 0); 
+                                const finalW = parseDim(cols[9], 0); 
+                                const finalT = parseDim(cols[10], 18);
+                                const code = cols[1] || '-'; 
+                                const name = cols[2] || `Detalė ${i}`; 
+                                const material = cols[3] || 'Nenurodyta';
+
+                                const displayCutL = formatDimValue(cutL, isKartotinisRow && (!cutL || cutL === 0));
+                                const displayCutW = formatDimValue(cutW, isKartotinisRow && (!cutW || cutW === 0));
+                                const displayFinalL = formatDimValue(finalL, isKartotinisRow && (!finalL || finalL === 0));
+                                const displayFinalW = formatDimValue(finalW, isKartotinisRow && (!finalW || finalW === 0));
+                                                                                
+                                const stepsConfig = [
+                                    { seq: 1, val: formatEdge(cols[11], cols[12], isKartotinisRow) },
+                                    { seq: 2, val: formatEdge(cols[13], cols[14], isKartotinisRow) },
+                                    { seq: 3, val: formatEdge(cols[15], cols[16], isKartotinisRow) },
+                                    { seq: 4, val: formatEdge(cols[17], cols[18], isKartotinisRow) }
+                                ].filter(s => s.val);
+
+                                const parsedSteps = stepsConfig.map(s => {
+                                    const valParts = s.val.split(' - ');
+                                    let thickness = '-';
+                                    let dimension = '-';
+                                    let isRounded = false;
+                                    let isFluted = false;
+
+                                    if (valParts.length > 1) {
+                                        thickness = valParts[0].trim();
+                                        const detailsStr = valParts.slice(1).join(' - ').toUpperCase();
+                                        isRounded = /\bAA?\b|\bAF\b|\bFA\b/.test(detailsStr);
+                                        isFluted = /\bF\b|\bAF\b|\bFA\b/.test(detailsStr);
+                                        dimension = detailsStr.replace(/\b(AA|A|F|AF|FA)\b/g, '').trim();
+                                    } else {
+                                        const sUpper = s.val.toUpperCase();
+                                        isRounded = /\bAA?\b|\bAF\b|\bFA\b/.test(sUpper);
+                                        isFluted = /\bF\b|\bAF\b|\bFA\b/.test(sUpper);
+                                        dimension = sUpper.replace(/\b(AA|A|F|AF|FA)\b/g, '').trim();
+                                    }
+
+                                    if (isKartotinisRow && (dimension === '0' || dimension === '' || dimension === '-')) {
+                                        dimension = '?';
+                                    }
+
+                                    return {
+                                        seq: s.seq,
+                                        val: s.val,
+                                        thickness,
+                                        dimension,
+                                        isRounded,
+                                        isFluted
+                                    };
+                                });
+
+                                const _searchStr = `${code} ${name} ${material} ${cutL} ${cutW} ${cutT} ${cutL}x${cutW} ${cutW}x${cutL} ${cutL}x${cutW}x${cutT} ${finalL} ${finalW} ${finalT} ${finalL}x${finalW} ${finalW}x${finalL} ${finalL}x${finalW}x${finalT}`.toLowerCase();
+
+                                newParts.push({
+                                    id: `item-${i}-${Date.now()}`, 
+                                    code, 
+                                    name, 
+                                    material,
+                                    qty: parseInt(cols[4]) || 1, 
+                                    cutL, 
+                                    cutW, 
+                                    cutT, 
+                                    finalL, 
+                                    finalW, 
+                                    finalT,
+                                    displayCutL,
+                                    displayCutW,
+                                    displayFinalL,
+                                    displayFinalW,
+                                    edges: {
+                                        step1: stepsConfig.find(sc => sc.seq === 1)?.val || null,
+                                        step2: stepsConfig.find(sc => sc.seq === 2)?.val || null,
+                                        step3: stepsConfig.find(sc => sc.seq === 3)?.val || null,
+                                        step4: stepsConfig.find(sc => sc.seq === 4)?.val || null
+                                    },
+                                    parsedSteps,
+                                    note: cols[19] ? cols[19].trim() : '', 
+                                    _searchStr
+                                });
+                            }
+                            if (newParts.length > 0) {
+                                 setParts(newParts);
+                                 setSelectedPart(newParts[0]);
+                                 setError(null); 
+                             } else {
+                                 setError(t.errParse); 
+                             }
+                        } catch (err) { 
+                             setError(t.errRead); 
+                             console.error(err); 
+                         }
+                    },
+                    error: (err) => { 
+                         setError(t.errParse); 
+                         console.error("PapaParse Error:", err); 
+                     }
+                });
+            }, [t]);
+
+            useEffect(() => {
+                let isMounted = true;
+                const fetchOnlineCSV = async () => {
+                    try {
+                        const localData = await idb.get('cached_parts_csv_v5');
+                        if (localData && isMounted) { 
+                             parseCSV(localData); 
+                             setIsLoading(false); 
+                         } else if (isMounted) {
+                            setIsLoading(true);
+                        }
+                        
+                        const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQSHJJdOhsNzRuq-WmcCS1SFCUqvRlYFYU9I9rs1LL9zlJ8AQWzwB3l_1PY67wbnHxhTDTi5VrC1jRq/pub?gid=1947074840&single=true&output=csv";
+                        const response = await fetch(url);
+                        if (!response.ok) throw new Error(response.statusText);
+                        const remoteText = await response.text();
+                        if (remoteText !== localData) {
+                            await idb.set('cached_parts_csv_v5', remoteText);
+                            if (isMounted) parseCSV(remoteText);
+                        }
+                    } catch (err) { 
+                         if (isMounted && isLoading) setError(translations[lang].errFetch); 
+                     } finally { 
+                         if (isMounted) setIsLoading(false); 
+                     }
+                };
+                fetchOnlineCSV();
+                return () => { isMounted = false; };
+            }, [parseCSV, lang]);
+
+            const handleFileUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    parseCSV(evt.target.result);
+                };
+                reader.readAsText(file);
+            };
+
+            const searchRegex = useMemo(() => {
+                const baseTerms = debouncedSearchTerm.toLowerCase().trim().split(/\s+/).filter(Boolean);
+                if (!baseTerms.length) return null;
+                const expanded = new Set(baseTerms);
+                for (let i = 0; i < baseTerms.length; i++) {
+                    if (baseTerms[i].includes('x')) {
+                        const p = baseTerms[i].split('x');
+                        if (p[0]) expanded.add(p[0]); 
+                        if (p[1]) expanded.add(p[1]);
+                    }
+                }
+                const sortedTerms = Array.from(expanded).sort((a, b) => b.length - a.length);
+                const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                return new RegExp(`(${sortedTerms.map(escapeRegExp).join('|')})`, 'gi');
+            }, [debouncedSearchTerm]);
+
+            const collections = useMemo(() => ['AUSTIN', 'MOPAC', 'S1', 'S2', 'S3'], []);
+
+            const filteredParts = useMemo(() => {
+                const searchLower = debouncedSearchTerm.toLowerCase().trim();
+                if (!searchLower && !selectedCollection) return parts;
+                const searchTerms = searchLower.split(/\s+/).filter(Boolean);
+
+                return parts.filter(p => {
+                    if (selectedCollection) {
+                        if (!p.code || !p.code.toUpperCase().startsWith(selectedCollection.toUpperCase())) return false;
+                    }
+                    for (let i = 0; i < searchTerms.length; i++) {
+                        if (!p._searchStr.includes(searchTerms[i])) return false;
+                    }
+                    return true;
+                });
+            }, [parts, debouncedSearchTerm, selectedCollection]);
+
+            useEffect(() => { setRenderLimit(50); }, [debouncedSearchTerm, selectedCollection]);
+            const visibleParts = useMemo(() => filteredParts.slice(0, renderLimit), [filteredParts, renderLimit]);
+
+            useEffect(() => {
+                if (isLoading || visibleParts.length >= filteredParts.length) return;
+                const observer = new IntersectionObserver((entries) => { 
+                     if (entries[0].isIntersecting) setRenderLimit(prev => prev + 50); 
+                 }, { rootMargin: '200px' });
+                const currentLoader = loaderRef.current;
+                if (currentLoader) observer.observe(currentLoader);
+                return () => {
+                    if (currentLoader) observer.unobserve(currentLoader);
+                    observer.disconnect();
+                };
+            }, [isLoading, visibleParts.length, filteredParts.length]);
+
+            return (
+                <div className="min-h-screen pb-12 transition-colors duration-200">
+                    {/* Header Bento Tile */}
+                    <header className="glass-header border-b border-slate-200/50 dark:border-slate-800/80 sticky top-0 z-30 shadow-sm print:hidden">
+                        <div className="max-w-7xl mx-auto px-4 py-3 sm:py-4 flex items-center justify-between gap-4">
+                            <div className="flex items-center shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" className="w-10 h-10 sm:w-11 sm:h-11" aria-hidden="true">
+                                    <g fill="none" stroke="currentColor" className="text-brandRed animate-pulse" strokeWidth="6" strokeLinejoin="round" strokeLinecap="round">
+                                        <circle cx="40" cy="45" r="12" />
+                                        <path d="M 66.2 55 A 28 28 0 1 0 40 73 L 90 73 L 80 55 Z" />
+                                    </g>
+                                </svg>
+                                <span className="hidden sm:inline-block ml-3 font-extrabold text-sm tracking-widest text-brandBlue dark:text-sky-400 uppercase">Edge v2026</span>
+                            </div>
+
+                            <div className="flex-1 max-w-3xl relative flex flex-col sm:flex-row gap-2 sm:gap-3">
+                                <div className="relative flex-1 flex items-center">
+                                    <svg className="w-4 h-4 text-slate-400 absolute left-3.5 z-10 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                    <input 
+                                         type="text" 
+                                         placeholder={t.search} 
+                                         className="w-full pl-10 pr-10 py-2 sm:py-2.5 text-xs sm:text-sm border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50/60 dark:bg-slate-900/40 focus:bg-white dark:focus:bg-slate-950 focus:ring-2 focus:ring-brandRed/10 focus:border-brandRed outline-none text-slate-800 dark:text-slate-100 transition-all placeholder:text-slate-400" 
+                                         value={searchTerm} 
+                                         onChange={(e) => setSearchTerm(e.target.value)} 
+                                         aria-label={t.search}
+                                    />
+                                    {searchTerm && (
+                                        <button onClick={() => setSearchTerm('')} className="absolute right-2 p-1 text-slate-400 hover:text-brandRed hover:bg-brandRed/10 rounded-full transition-colors" aria-label={t.clearSearch}>
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                        </button>
+                                    )}
+                                </div>
+                                {collections.length > 0 && (
+                                    <div className="relative shrink-0 sm:w-44 flex items-center">
+                                        <select 
+                                             value={selectedCollection} 
+                                             onChange={(e) => setSelectedCollection(e.target.value)} 
+                                             className="w-full h-full pl-3 pr-8 py-2 sm:py-2.5 text-xs border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50/60 dark:bg-slate-900/40 focus:bg-white dark:focus:bg-slate-950 outline-none text-slate-800 dark:text-slate-100 transition-all cursor-pointer appearance-none"
+                                            aria-label={t.allCollections}
+                                        >
+                                            <option value="">{t.allCollections}</option>
+                                            {collections.map(c => <option key={c} value={c}>{c}</option>)}
+                                        </select>
+                                        <div className="absolute right-2.5 pointer-events-none text-slate-400">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="relative flex items-center gap-2 shrink-0" ref={settingsRef}>
+                                <label className="cursor-pointer p-2 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all" title={t.uploadCSV}>
+                                    <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                                </label>
+
+                                <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} className={`p-2 rounded-lg transition-all border ${isSettingsOpen ? 'bg-slate-100 dark:bg-slate-800 text-brandBlue dark:text-sky-400 border-slate-300 dark:border-slate-700' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800'}`} aria-label={t.settings} title={t.settings}>
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
+                                </button>
+                                {isSettingsOpen && (
+                                    <div className="absolute top-full right-0 mt-2 w-64 bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-slate-200/60 dark:border-slate-800/80 overflow-hidden z-50 origin-top-right">
+                                        <div className="p-4 flex flex-col gap-4">
+                                            <div>
+                                                <span className="block text-[0.625rem] font-bold text-slate-400 uppercase tracking-wider mb-2">{t.language}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <button onClick={() => setLang('lt')} className={`text-xl p-1 rounded hover:scale-110 transition-transform ${lang === 'lt' ? 'scale-110 opacity-100' : 'opacity-40 grayscale'}`} title="Lietuvių">🇱🇹</button>
+                                                    <button onClick={() => setLang('en')} className={`text-xl p-1 rounded hover:scale-110 transition-transform ${lang === 'en' ? 'scale-110 opacity-100' : 'opacity-40 grayscale'}`} title="English">🇬🇧</button>
+                                                    <button onClick={() => setLang('uk')} className={`text-xl p-1 rounded hover:scale-110 transition-transform ${lang === 'uk' ? 'scale-110 opacity-100' : 'opacity-40 grayscale'}`} title="Українська">🇺🇦</button>
+                                                </div>
+                                            </div>
+                                            <div className="w-full h-px bg-slate-100 dark:bg-slate-800"></div>
+                                            <div>
+                                                <span className="block text-[0.625rem] font-bold text-slate-400 uppercase tracking-wider mb-2">{t.textSize}</span>
+                                                <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-950 p-1 rounded border border-slate-200/50 dark:border-slate-800 w-fit">
+                                                    <button onClick={() => setTextScale(s => Math.max(70, s - 10))} className="px-2 py-1 text-xs font-bold text-slate-700 dark:text-slate-300">A-</button>
+                                                    <button onClick={() => setTextScale(100)} className="px-2 py-1 text-xs font-bold text-slate-700 dark:text-slate-300">A</button>
+                                                    <button onClick={() => setTextScale(s => Math.min(150, s + 10))} className="px-2 py-1 text-xs font-bold text-slate-700 dark:text-slate-300">A+</button>
+                                                </div>
+                                            </div>
+                                            <div className="w-full h-px bg-slate-100 dark:bg-slate-800"></div>
+                                            <div>
+                                                <span className="block text-[0.625rem] font-bold text-slate-400 uppercase tracking-wider mb-2">{t.theme}</span>
+                                                <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-950 p-1 rounded border border-slate-200/50 dark:border-slate-800">
+                                                    <button onClick={() => setTheme('light')} className={`py-1.5 px-2.5 rounded text-xs font-semibold flex-1 flex items-center justify-center gap-1 ${theme === 'light' ? 'bg-white text-brandBlue shadow-sm' : 'text-slate-500'}`}>
+                                                        <span>{t.themeLight}</span>
+                                                    </button>
+                                                    <button onClick={() => setTheme('dark')} className={`py-1.5 px-2.5 rounded text-xs font-semibold flex-1 flex items-center justify-center gap-1 ${theme === 'dark' ? 'bg-white dark:bg-slate-900 text-brandBlue dark:text-sky-400 shadow-sm' : 'text-slate-500'}`}>
+                                                        <span>{t.themeDark}</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div className="w-full h-px bg-slate-100 dark:bg-slate-800"></div>
+                                            <div>
+                                                <a href="https://docs.google.com/spreadsheets/d/1dmgyXAz_ZEbjI5P5P6MbiwaSTIY6KesygqZ-6gvvvs8/edit?gid=1947074840#gid=1947074840" target="_blank" rel="noopener noreferrer" className="cursor-pointer bg-brandRed hover:bg-red-600 text-white py-2 px-3 rounded text-xs font-bold flex items-center justify-center gap-2 w-full transition-colors">
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                                    <span>{t.editData}</span>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </header>
+                    <div className="sticky top-0 z-20 bg-brandRed h-[2px] shadow-sm print:hidden"></div>
+                    
+                    {/* Primary Bento Layout Container */}
+                    <main className="max-w-7xl mx-auto px-4 mt-6 bento-main-grid">
+                        {error && (
+                            <div className="mb-4 p-3 bg-white dark:bg-slate-900 border-l-4 border-brandRed text-slate-800 dark:text-slate-200 rounded shadow-sm flex items-center gap-3 print:hidden" role="alert">
+                                <svg className="w-4 h-4 flex-shrink-0 text-brandRed" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <p className="text-xs font-semibold">{error}</p>
+                                <button onClick={() => setError(null)} className="ml-auto text-slate-400 hover:text-brandRed">✕</button>
+                            </div>
+                        )}
+
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+                            
+                            {/* BENTO CARD 1: Visual inspector column */}
+                            <section className="md:col-span-5 bento-card p-5 rounded-xl border border-slate-200/50 dark:border-slate-800/80 sticky top-20 hidden md:block">
+                                <DetailVisualizerBento part={selectedPart} t={t} isSidebar={true} />
+                            </section>
+
+                            {/* BENTO CARD 2: Gamybos detalių matrica */}
+                            <section className="md:col-span-7 bento-card p-4 rounded-xl border border-slate-200/50 dark:border-slate-800/80 overflow-hidden print:p-0 print:border-none print:shadow-none print:bg-transparent">
+                                <div className="flex justify-between items-center mb-3 px-1">
+                                    <span className="text-xs font-extrabold uppercase tracking-widest text-slate-400">{t.showing(visibleParts.length, filteredParts.length)}</span>
+                                </div>
+
+                                {isLoading ? (
+                                    <SkeletonGrid />
+                                ) : filteredParts.length === 0 ? (
+                                    <div className="text-center py-16 bg-white dark:bg-slate-900/40 rounded-lg border border-dashed border-slate-200 dark:border-slate-800">
+                                        <svg className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                        <h3 className="text-sm font-bold text-brandBlue dark:text-sky-400">{t.noPartsTitle}</h3>
+                                        <p className="mt-1 text-xs text-slate-400 max-w-xs mx-auto">{t.noPartsDesc}</p>
+                                    </div>
+                                ) : (
+                                    <div className="component-card">
+                                        <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-2 bg-slate-50/50 dark:bg-slate-800/20 border-b border-slate-200/50 dark:border-slate-800 text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">
+                                            <div className="col-span-5 pl-1">{t.name}</div>
+                                            <div className="col-span-3">{t.cutting}</div>
+                                            <div className="col-span-3">{t.final}</div>
+                                            <div className="col-span-1 text-right pr-1">Kodas</div>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            {visibleParts.map(part => (
+                                                <GridRow 
+                                                    key={part.id} 
+                                                    part={part} 
+                                                    isSelected={selectedPart && selectedPart.id === part.id}
+                                                    onClick={handleSelectPart} 
+                                                    t={t} 
+                                                    searchRegex={searchRegex} 
+                                                />
+                                            ))}
+                                        </div>
+                                        {visibleParts.length < filteredParts.length && (
+                                            <div ref={loaderRef} className="p-4 flex justify-center print:hidden">
+                                                <svg className="animate-spin h-4 w-4 text-brandBlue dark:text-sky-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </section>
+
+                        </div>
+                    </main>
+
+                    {/* Mobile sliding bottom drawer backup */}
+                    {isMobileDrawerOpen && selectedPart && (
+                        <div className="fixed inset-0 z-50 flex items-end justify-center md:hidden" role="dialog" aria-modal="true">
+                            <div className="absolute inset-0 bg-slate-950/65 backdrop-blur-sm" onClick={() => setIsMobileDrawerOpen(false)}></div>
+                            <div className="relative w-full bg-white dark:bg-slate-900 rounded-t-2xl p-5 shadow-2xl z-10 max-h-[85vh] overflow-y-auto animate-slide-up">
+                                <div className="w-12 h-1 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-4"></div>
+                                <DetailVisualizerBento part={selectedPart} t={t} onClose={() => setIsMobileDrawerOpen(false)} />
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
